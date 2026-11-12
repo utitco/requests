@@ -544,7 +544,7 @@ function pill(r){const st={pending:L('قيد المراجعة','In review'),appr
 const $=s=>document.querySelector(s);
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function gate(inner){return `<div class="gate"><div class="gcard"><img src="${LOGO}" alt="UTiTCo"><h1>${L('نظام الطلبات الداخلية','Internal Requests')}</h1>${inner}<div class="grow"><button class="iconbtn" data-act="lang">${L('English','عربي')}</button><button class="iconbtn" data-act="theme" aria-label="${L('تبديل الوضع الفاتح والداكن','Toggle light and dark')}">${themeNow()==='dark'?IC.sun:IC.moon}</button></div></div></div>`}
-function refresh(){const m=S.modal;if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc')){renderApp();return}render()}
+function refresh(){const m=S.modal;if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp')){renderApp();return}render()}
 function render(){renderApp();renderOv()}
 function renderApp(){
  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ar'?'rtl':'ltr';
@@ -645,7 +645,7 @@ function verify(){const refs=S.reqs.slice(0,3).map(r=>r.ref);let res='';
 /* ---------- overlays ---------- */
 function renderOv(){const m=S.modal,el=$('#ov');if(!m){el.innerHTML='';document.body.style.overflow='';return}
  document.body.style.overflow='hidden';
- el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
+ el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
  if(m.kind==='doc')fit();}
 function detailBody(r,l){const d=r.d,A=(l||S.lang)==='ar',kv=p=>`<dl class="kv">${p.filter(Boolean).map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('')}</dl>`;
  const dt=s=>`${fG(d2ts(s))} <small class="note">· ${fH(d2ts(s))}</small>`;
@@ -744,11 +744,54 @@ function saveErr(e){return e&&e.code==='permission-denied'?L('ليست لديك 
 
 /* ---------- employees + settings (HR / admin) ---------- */
 function empsPanel(){const l=Object.values(S.emps).sort((a,b)=>String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
- return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
+ return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn sm" data-act="imp-tpl">${L('قالب Excel','Excel template')}</button><label class="btn sm" for="impfile" tabindex="0">${L('استيراد من Excel','Import from Excel')}</label><input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
  ${l.length?`<div class="rows emps"><div class="rhead"><span>${L('الرقم الوظيفي','Employee no.')}</span><span>${L('الاسم','Name')}</span><span>${L('القسم والمسمى','Department & title')}</span><span>${L('المدير المباشر','Line manager')}</span><span>${L('الحالة','Status')}</span></div>
  ${l.map(e=>{const tags=[];if(e.key===R.hr)tags.push(o2(STAGE.hr));if(e.key===R.fin)tags.push(o2(STAGE.fin));if(e.key===R.ceo)tags.push(L('الإدارة العليا','Executive'));if(e.admin)tags.push(L('مدير نظام','Admin'));
   return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(e.key)}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}</span></button>`}).join('')}</div>`
  :`<div class="rows"><div class="empty"><b>${L('لا يوجد موظفون بعد','No employees yet')}</b>${L('اضغط «إضافة موظف» وابدأ بنفسك.','Use “Add employee” and start with yourself.')}</div></div>`}`}
+/* ----- Excel import ----- */
+const IMP=[['email','الإيميل','email'],['ar','الاسم بالعربي','name arabic'],['en','الاسم بالإنجليزي','name english'],['no','الرقم الوظيفي','employee no'],['deptAr','القسم بالعربي','department arabic'],['deptEn','القسم بالإنجليزي','department english'],['tAr','المسمى بالعربي','title arabic'],['tEn','المسمى بالإنجليزي','title english'],['hire','تاريخ التعيين','hire date'],['g','الجنس','gender'],['mgr','إيميل المدير المباشر','manager email'],['used','أيام الإجازة المستخدمة','leave days used'],['sal','الراتب','salary']];
+const impNorm=v=>String(v==null?'':v).replace(/\(.*?\)/g,'').replace(/[\s_\-.:*]/g,'').replace(/[أإآ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').toLowerCase();
+function impDate(v){if(v==null||v==='')return '';let y,mo,d;if(typeof v==='number'){const t=new Date(Math.round((v-25569)*864e5));y=t.getUTCFullYear();mo=t.getUTCMonth()+1;d=t.getUTCDate()}else{const s=String(v).trim();let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(m){y=+m[1];mo=+m[2];d=+m[3]}else{m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);if(!m)return null;y=+m[3];mo=+m[2];d=+m[1]}}
+ if(!(y>1950&&y<2100&&mo>=1&&mo<=12&&d>=1&&d<=31))return null;return y+'-'+p2(mo)+'-'+p2(d)}
+function loadXLSX(){return window.XLSX?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';s.onload=()=>res();s.onerror=()=>rej(new Error('xlsx'));document.head.appendChild(s)})}
+async function impTemplate(){try{await loadXLSX();const X=window.XLSX,head=IMP.map(c=>c[1]+(c[0]==='sal'||c[0]==='deptEn'||c[0]==='tEn'||c[0]==='mgr'?' (اختياري)':''));
+  const ex=[['ceo@'+DOMAIN,'عبدالعزيز الراشد','Abdulaziz Al-Rashed','1000','الإدارة العليا','Executive Office','الرئيس التنفيذي','Chief Executive Officer','2012-01-08','ذكر','',12,''],['khalid@'+DOMAIN,'خالد الحربي','Khalid Al-Harbi','1003','المبيعات','Sales','مدير المبيعات','Sales Manager','2016-09-04','ذكر','ceo@'+DOMAIN,14,''],['sarah@'+DOMAIN,'سارة العتيبي','Sarah Al-Otaibi','1002','المبيعات','Sales','أخصائية مبيعات','Sales Specialist','2021-03-14','أنثى','khalid@'+DOMAIN,8,'']];
+  const ws=X.utils.aoa_to_sheet([head].concat(ex));ws['!cols']=head.map((h,i)=>({wch:i===0||i===10?28:20}));const wb=X.utils.book_new();if(!wb.Workbook)wb.Workbook={};wb.Workbook.Views=[{RTL:true}];X.utils.book_append_sheet(wb,ws,'الموظفون');
+  await saveFile('utitco-employees-template.xlsx',new Blob([X.write(wb,{bookType:'xlsx',type:'array'})]));toast(L('نُزّل القالب. استبدل صفوف الأمثلة ببيانات موظفيكم.','Template downloaded. Replace the example rows with your employees.'))}catch(e){console.error(e);toast(L('تعذّر تجهيز القالب. تحقق من الاتصال.','Could not prepare the template. Check your connection.'))}}
+async function importFile(file){if(!file)return;let rows;
+ try{await loadXLSX();const wb=window.XLSX.read(await file.arrayBuffer(),{type:'array'});rows=window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:true,defval:''})}catch(e){console.error(e);toast(L('تعذّرت قراءة الملف. تأكد أنه ملف Excel سليم.','Could not read the file. Make sure it is a valid Excel file.'));return}
+ const keys=IMP.map(c=>[c[0],impNorm(c[1]),impNorm(c[2])]);let hi=-1,map={};
+ for(let i=0;i<Math.min(rows.length,10)&&hi<0;i++){const m={};rows[i].forEach((c,j)=>{const n=impNorm(c);if(!n)return;const k=keys.find(k=>n===k[1]||n===k[2]);if(k&&m[k[0]]==null)m[k[0]]=j});if(m.email!=null&&Object.keys(m).length>=3){hi=i;map=m}}
+ if(hi<0){toast(L('لم أجد صف العناوين. استخدم القالب كما هو ولا تغيّر أسماء الأعمدة.','Header row not found. Use the template as is and keep the column names.'));return}
+ const cell=(r,k)=>map[k]==null?'':r[map[k]],str=(r,k)=>String(cell(r,k)==null?'':cell(r,k)).trim(),items=[],errs=[],seen={};
+ const body=rows.slice(hi+1).map((r,i)=>[r,hi+2+i]).filter(x=>x[0].some(c=>String(c).trim()!==''));
+ if(body.length>500){toast(L('الحد الأقصى 500 صف في الملف الواحد.','At most 500 rows per file.'));return}
+ const inFile={};body.forEach(x=>{inFile[str(x[0],'email').toLowerCase()]=1});
+ body.forEach(x=>{const r=x[0],n=x[1],key=str(r,'email').toLowerCase(),bad=m=>errs.push({n,msg:m});
+  if(!/^[^@\s]+@[^@\s]+$/.test(key)||!key.endsWith('@'+DOMAIN))return bad(L(`الإيميل يجب أن ينتهي بـ ‎@${DOMAIN}`,`Email must end in @${DOMAIN}`));
+  if(seen[key])return bad(L('الإيميل مكرر في الملف','Email is repeated in the file'));
+  const ar=str(r,'ar'),no=str(r,'no'),deptAr=str(r,'deptAr'),tAr=str(r,'tAr'),miss=[];if(!ar)miss.push(IMP[1][1]);if(!no)miss.push(IMP[3][1]);if(!deptAr)miss.push(IMP[4][1]);if(!tAr)miss.push(IMP[6][1]);
+  if(miss.length)return bad(L('حقول ناقصة: ','Missing: ')+miss.join('، '));
+  const hire=impDate(cell(r,'hire'));if(!hire)return bad(L('تاريخ التعيين ناقص أو بصيغة غير مفهومة (اكتبه مثل 2021-03-14)','Hire date is missing or unreadable (write it like 2021-03-14)'));
+  const gv=impNorm(cell(r,'g')),g=['انثي','f','female','انثى'].includes(gv)?'f':['ذكر','m','male',''].includes(gv)?'m':null;if(!g)return bad(L('الجنس: اكتب ذكر أو أنثى','Gender: write male or female'));
+  const mgr=str(r,'mgr').toLowerCase();if(mgr&&mgr===key)return bad(L('الموظف مدير لنفسه','Employee is their own manager'));if(mgr&&!inFile[mgr]&&!S.emps[mgr])return bad(L('إيميل المدير المباشر غير موجود في الملف ولا في النظام','Manager email is not in the file or the system'));
+  const used=Math.max(0,Math.round(+cell(r,'used')||0)),sv=String(cell(r,'sal')).trim(),old=S.emps[key];
+  const data={ar,en:str(r,'en')||ar,no,deptAr,deptEn:str(r,'deptEn'),tAr,tEn:str(r,'tEn')||tAr,hire,g,mgr,used};if(!old)data.active=true;
+  seen[key]=1;items.push({key,data,sal:canSeeSal()&&sv!==''&&+sv>0?Math.round(+sv):undefined,isNew:!old})});
+ S.modal={kind:'imp',items,errs,name:file.name};renderOv()}
+function impView(m){const nw=m.items.filter(i=>i.isNew).length,up=m.items.length-nw;
+ return `<div class="ov mid" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true">
+  <div class="sh-h"><h2>${L('استيراد الموظفين','Import employees')}</h2><button type="button" class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div>
+  <div class="sh-b"><p class="note num">${esc(m.name)}</p>
+   <div class="live"><span>${L('جاهز للاستيراد','Ready to import')}: <b class="num">${m.items.length}</b></span><span>${L('جديد','New')}: <b class="num">${nw}</b></span><span>${L('تحديث لموجود','Updates')}: <b class="num">${up}</b></span><span>${L('صفوف فيها أخطاء','Rows with errors')}: <b class="num">${m.errs.length}</b></span></div>
+   ${m.errs.length?`<div class="sec"><h3>${L('صفوف لن تُستورد (صحّحها في الملف ثم أعد الاستيراد)','Rows that will be skipped (fix them in the file and import again)')}</h3><table class="mini"><tbody>${m.errs.slice(0,15).map(e=>`<tr><td class="num">${L('صف','Row')} ${e.n}</td><td>${esc(e.msg)}</td></tr>`).join('')}</tbody></table>${m.errs.length>15?`<p class="note">${L('وأخطاء أخرى: ','More errors: ')}<span class="num">${m.errs.length-15}</span></p>`:''}</div>`:''}
+   ${m.items.length?`<div class="sec"><h3>${L('معاينة','Preview')}</h3><div class="scroll-x"><table class="mini"><thead><tr><th>${L('الإيميل','Email')}</th><th>${L('الاسم','Name')}</th><th>${L('القسم','Department')}</th><th>${L('المدير','Manager')}</th></tr></thead><tbody>${m.items.slice(0,8).map(i=>`<tr><td class="num">${esc(i.key)}</td><td>${esc(i.data.ar)}</td><td>${esc(i.data.deptAr)}</td><td class="num">${esc(i.data.mgr||'—')}</td></tr>`).join('')}</tbody></table></div>${m.items.length>8?`<p class="note">${L('والباقي: ','And more: ')}<span class="num">${m.items.length-8}</span></p>`:''}</div>`:`<p>${L('لا توجد صفوف صالحة للاستيراد.','No valid rows to import.')}</p>`}
+  </div>
+  <div class="sh-f"><button type="button" class="btn" data-act="close">${L('إلغاء','Cancel')}</button>${m.items.length?`<button type="button" class="btn pri" data-act="imp-go"${m.busy?' disabled':''}>${L('استيراد','Import')} <span class="num">${m.items.length}</span></button>`:''}</div>
+ </div></div>`}
+async function doImport(){const m=S.modal;if(!m||m.kind!=='imp'||m.busy)return;m.busy=true;renderOv();const n=m.items.length;
+ try{await BE.importEmployees(m.items);S.modal=null;toast(L(`استُورد ${n} موظف.`,`Imported ${n} employees.`))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()}
 function blankEmp(){return {email:'',ar:'',en:'',no:'',deptAr:'',deptEn:'',tAr:'',tEn:'',hire:iso(now()),g:'m',mgr:'',used:'0',sal:'',active:'yes',admin:'no'}}
 function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  const inp=(n,type,v,ex)=>`<input type="${type}" id="f-${n}" name="${n}" value="${esc(v)}"${inv(n)}${type==='text'?' maxlength="80"':''} ${ex||''}>`;
@@ -947,6 +990,8 @@ const ACT={
  'emp-new'(){S.modal={kind:'emp',key:null,d:blankEmp(),errs:{},sal0:null};renderOv()},
  'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||iso(now()),g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no'})};renderOv()},
  backup(){backup()},
+ 'imp-tpl'(){impTemplate()},
+ 'imp-go'(){doImport()},
  doc(el){const r=S.reqs.find(x=>x.id===el.dataset.id);S.modal={kind:'doc',id:r.id,dl:S.lang,back:S.modal&&S.modal.kind==='detail'?S.modal:null};renderOv()},
  doclang(){S.modal.dl=S.modal.dl==='ar'?'en':'ar';renderOv()},
  pdf(){downloadPDF()},
@@ -955,7 +1000,7 @@ const ACT={
 function doVerify(){const q=S.vq.trim().toUpperCase();const r=S.reqs.find(x=>x.ref===q);S.vres=q?(r?r.id:null):undefined;render()}
 document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f)f(el,ev)});
 document.addEventListener('change',ev=>{const t=ev.target;
- if(false){}
+ if(t.id==='impfile'){const f=t.files&&t.files[0];t.value='';importFile(f)}
  else if(t.id==='ft'){S.f.type=t.value;$('#list').innerHTML=list()}
  else if(t.id==='fs'){S.f.status=t.value;$('#list').innerHTML=list()}
  else if(t.closest('#nform')){readForm();if(t.name==='item'){S.modal.d.model=OPT.model[t.value][0];renderOv()}else if(t.name==='kind'){renderOv()}}});
@@ -998,6 +1043,7 @@ function fbBE(){
   async addRequest(r){const d=RQ.doc(),data=Object.assign({},r);delete data.id;await d.set(data);return d.id},
   updateRequest(id,p){return RQ.doc(id).update(p)},
   saveEmployee(key,data,sal){const b=db.batch();b.set(E.doc(key),data,{merge:true});if(sal===null)b.delete(SAL.doc(key));else if(sal!==undefined)b.set(SAL.doc(key),{sal});return b.commit()},
+  async importEmployees(items){for(let i=0;i<items.length;i+=200){const b=db.batch();items.slice(i,i+200).forEach(x=>{b.set(E.doc(x.key),x.data,{merge:true});if(x.sal!==undefined)b.set(SAL.doc(x.key),{sal:x.sal})});await b.commit()}},
   saveConfig(id,data){return CF.doc(id).set(data,{merge:true})}
  }}
 /* Local preview backend (only when UTI_CONFIG.mock is set): same screens, data kept in this browser. */
@@ -1017,6 +1063,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
   async addRequest(r){const d=cl(r);d.id='m'+now().toString(36)+M.reqs.length;M.reqs.push(d);persist();sync();return d.id},
   async updateRequest(id,p){const r=M.reqs.find(x=>x.id===id);if(!r||r.pendingWith!==S.user)throw {code:'permission-denied'};Object.assign(r,cl(p));persist();sync()},
   async saveEmployee(key,data,sal){if(!canManage())throw {code:'permission-denied'};M.emps[key]=Object.assign({},M.emps[key],data);if(sal===null)delete M.sal[key];else if(sal!==undefined)M.sal[key]=sal;persist();sync()},
+  async importEmployees(items){if(!canManage())throw {code:'permission-denied'};items.forEach(x=>{M.emps[x.key]=Object.assign({},M.emps[x.key],x.data);if(x.sal!==undefined)M.sal[x.key]=x.sal});persist();sync()},
   async saveConfig(id,data){if(!isAdmin())throw {code:'permission-denied'};M[id]=Object.assign({},M[id],data);persist();sync()}
  }}
 let BE;
