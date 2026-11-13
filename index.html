@@ -439,6 +439,16 @@ details.phelp ol{margin:8px 0 0;padding-inline-start:20px;display:flex;flex-dire
 .lt-sign img.co{width:132px;height:132px}
 .stampset{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
 .stampset img{width:120px;height:120px;object-fit:contain;background:#fff;border:1px solid var(--line,#d5ddd8);border-radius:10px;padding:8px}
+/* owner test mode */
+.asbar{position:fixed;inset:auto 0 0 0;z-index:60;box-shadow:0 -4px 18px rgba(0,0,0,.18);padding-bottom:calc(8px + env(safe-area-inset-bottom,0px));display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;padding:8px max(16px,env(safe-area-inset-left,0px));background:#E2704F;color:#fff;font-size:13px;line-height:1.5;text-align:center}
+.asbar .btn{background:#fff;color:#8a3519;border-color:#fff;flex:none}
+.asbtn{display:inline-block;margin-top:6px;padding:2px 10px;border:1px solid var(--line-2);border-radius:999px;font-size:11.5px;font-weight:600;color:var(--accent,#557D6C);background:var(--surface)}
+.asbtn:hover{border-color:currentColor}
+.via{font-size:11.5px;color:#B5532F;font-weight:600;margin-top:2px}
+.eap small{display:block;font-size:8.5px;font-weight:500;line-height:1.25;color:#B5532F;white-space:normal}
+body:has(.asbar){padding-bottom:64px}
+body:has(.asbar) .ov{bottom:46px}
+body:has(.asbar) #toast{bottom:64px}
 </style>
 </head>
 <body>
@@ -561,7 +571,7 @@ function balance(id,reqs){const e=emp(id);return ANNUAL-(+e.used||0)-(reqs||S.re
 function pTotals(d){const sub=d.items.reduce((a,i)=>a+i.qty*i.price,0),vat=Math.round(sub*VAT*100)/100;return{sub,vat,total:Math.round((sub+vat)*100)/100}}
 function schedule(r){const n=r.d.months,amt=r.d.amount,per=Math.floor(amt/n*100)/100,base=new Date(r.closedAt||r.at),rows=[];let left=amt;for(let i=1;i<=n;i++){const a=i===n?Math.round(left*100)/100:per;left=Math.round((left-a)*100)/100;rows.push({i,ts:new Date(base.getFullYear(),base.getMonth()+i,1,12).getTime(),a,left})}return rows}
 function finalPatch(r,at){const p={status:'approved',closedAt:at,pendingWith:null};if(r.type==='leave'&&r.d.kind==='annual')p.snap=balance(r.emp);if(r.type==='custody')p.serial='UT-'+({laptop:'LT',mobile:'MB',car:'VH'})[r.d.item]+'-'+(1000+(parseInt(r.ref.slice(-4),10)*397)%9000);return p}
-async function decide(r,ok,note){const s=cur(r);if(!s)return null;const at=now(),i=r.stages.indexOf(s),stages=r.stages.map(x=>Object.assign({},x));stages[i]=Object.assign({},s,{decision:ok?'approved':'rejected',at,note:note||''});const p={stages};
+async function decide(r,ok,note){const s=cur(r);if(!s)return null;const at=now(),i=r.stages.indexOf(s),stages=r.stages.map(x=>Object.assign({},x));stages[i]=Object.assign({},s,{decision:ok?'approved':'rejected',at,note:note||''});if(S.as)stages[i].via='admin';const p={stages};
  if(!ok)Object.assign(p,{status:'rejected',closedAt:at,pendingWith:null});else{const nx=stages.find(x=>!x.decision);if(nx)p.pendingWith=nx.by;else Object.assign(p,finalPatch(r,at))}
  await BE.updateRequest(r.id,p);return {p,next:ok?stages.find(x=>!x.decision)||null:null}}
 function summary(r,l){const d=r.d;l=l||S.lang;const A=l==='ar';switch(r.type){
@@ -574,7 +584,17 @@ function summary(r,l){const d=r.d;l=l||S.lang;const A=l==='ar';switch(r.type){
 
 
 /* ---------- lists ---------- */
-const isAdmin=()=>!!S.user&&(S.owner===true||S.user===(CFG.owner||'').toLowerCase()||(S.emps[S.user]||{}).admin===true);
+const isAdmin=()=>!!S.user&&((!S.as&&S.owner===true)||S.user===(CFG.owner||'').toLowerCase()||(S.emps[S.user]||{}).admin===true);
+const realOwner=()=>{const u=S.as?S.realUser:S.user;return !!u&&(S.owner===true||u===(CFG.owner||'').toLowerCase())};
+const asReal=f=>{const a=S.as,u=S.user;if(a){S.as=null;S.user=S.realUser}try{return f()}finally{if(a){S.as=a;S.user=u}}};
+/* test mode: the owner uses the app as another employee. Live data stays subscribed as the owner; the view is narrowed here. */
+function viewApply(){if(!S.as||BE.mock)return;const u=S.user;
+ if(S.reqs!==S.vReqs)S.rawReqs=S.reqs;if(S.sal!==S.vSal)S.rawSal=S.sal;if(S.sups!==S.vSups)S.rawSups=S.sups;if(S.pos!==S.vPos)S.rawPos=S.pos;
+ const boss=isBoss(u);S.vReqs=S.reqs=S.rawReqs.filter(r=>boss||r.emp===u||r.empMgr===u||(r.approvers||[]).includes(u));
+ S.vSal=S.sal=canSeeSal()?S.rawSal:(S.rawSal[u]!=null?{[u]:S.rawSal[u]}:{});
+ const cp=canPurch();S.vSups=S.sups=cp?S.rawSups:{};S.vPos=S.pos=cp?S.rawPos:[]}
+function actAs(key){if(!realOwner()||S.as||!S.emps[key]||key===S.user)return;S.realUser=S.user;S.as=key;S.user=key;S.tab='mine';S.modal=null;S.f={q:'',type:'',status:''};if(BE.resync)BE.resync();else viewApply();render();window.scrollTo(0,0);toast(L(`أنت الآن تستخدم حساب ${nm(emp(key))}.`,`You are now using ${nm(emp(key))}’s account.`))}
+function actBack(){if(!S.as)return;if(!BE.mock){S.reqs=S.rawReqs;S.sal=S.rawSal;S.sups=S.rawSups;S.pos=S.rawPos}S.user=S.realUser;S.as=null;S.realUser=null;S.tab='emps';S.modal=null;if(BE.resync)BE.resync();render();toast(L('رجعت إلى حسابك.','Back to your own account.'))}
 async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 const isBoss=id=>!!id&&(id===R.hr||id===R.fin||id===R.ceo||(id===S.user&&isAdmin()));
 const canPurch=()=>isAdmin()||(!!S.user&&(S.emps[S.user]||{}).purch===true);
@@ -594,7 +614,7 @@ function pill(r){const st={pending:L('قيد المراجعة','In review'),appr
 const $=s=>document.querySelector(s);
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function gate(inner){return `<div class="gate"><div class="gcard"><img src="${LOGO}" alt="UTiTCo"><h1>${L('نظام الطلبات الداخلية','Internal Requests')}</h1>${inner}<div class="grow"><button class="iconbtn" data-act="lang">${L('English','عربي')}</button><button class="iconbtn" data-act="theme" aria-label="${L('تبديل الوضع الفاتح والداكن','Toggle light and dark')}">${themeNow()==='dark'?IC.sun:IC.moon}</button></div></div></div>`}
-function refresh(){const m=S.modal;if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup'||m.kind==='pxi')){renderApp();return}render()}
+function refresh(){viewApply();const m=S.modal;if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup'||m.kind==='pxi')){renderApp();return}render()}
 function render(){renderApp();renderOv()}
 function renderApp(){
  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ar'?'rtl':'ltr';
@@ -619,6 +639,7 @@ function renderApp(){
  if(isAdmin()&&(!nEmps||noRoute))setup=`<div class="guide"><b>${L('إعداد النظام','System setup')}</b><ol><li>${L('أضف الموظفين من تبويب «الموظفون»، وابدأ بنفسك','Add employees in the Employees tab, starting with yourself')}</li><li>${L('حدّد معتمدي الموارد البشرية والمالية والإدارة العليا من «الإعدادات»','Choose the HR, Finance and Executive approvers in Settings')}</li><li>${L('بعدها يستطيع الموظفون الدخول وتقديم الطلبات','Then employees can sign in and submit requests')}</li></ol></div>`;
  else if(noRoute)setup=`<div class="guide"><b>${L('النظام قيد الإعداد','Setup in progress')}</b><span>${L('لم يُحدَّد المعتمدون بعد، وتقديم الطلبات متوقف مؤقتاً.','Approvers are not set yet, so submitting is paused.')}</span></div>`;
  app.innerHTML=`
+ ${S.as?`<div class="asbar" role="status"><span>${L('وضع التجربة: أنت تستخدم حساب','Test mode: you are using the account of')} <b>${esc(nm(emp(S.user)))}</b>. ${L('كل ما تفعله يُسجَّل باسمه مع علامة «من حساب مدير النظام».','Anything you do is recorded under their name, marked “from the system admin account”.')}</span><button class="btn sm" data-act="as-back">${L('رجوع لحسابي','Back to my account')}</button></div>`:''}
  <header class="top"><div class="wrap">
   <div class="brand"><img src="${MARK}" alt="UTiTCo"><div><b>${L('نظام الطلبات الداخلية','Internal Requests')}</b><small>UTiTCo</small></div></div>
   <button class="iconbtn" data-act="lang" aria-label="${L('Switch to English','التبديل إلى العربية')}">${L('English','عربي')}</button>
@@ -708,12 +729,12 @@ function detailBody(r,l){const d=r.d,A=(l||S.lang)==='ar',kv=p=>`<dl class="kv">
  case 'letter':return kv([[L('الجهة الموجّه لها','Addressed to'),esc(d.to)||L('إلى من يهمه الأمر','To whom it may concern')],[L('إظهار الراتب','Show salary'),d.salary?L('نعم','Yes'):L('لا','No')],[L('لغة الخطاب','Letter language'),d.lang==='ar'?L('العربية','Arabic'):L('الإنجليزية','English')]]);
  case 'advance':{const s=schedule(r);return kv([[L('المبلغ','Amount'),sar(d.amount)],[L('مدة السداد','Repayment'),monWord(d.months)],[L('القسط الشهري','Monthly instalment'),sar(s[0].a)],[L('أول استقطاع','First deduction'),fM(s[0].ts)],[L('السبب','Reason'),esc(d.reason)]])}}}
 function detail(m){const r=S.reqs.find(x=>x.id===m.id);if(!r){S.modal=null;return ''}const e=emp(r.emp),c=cur(r),mineTurn=c&&c.by===S.user;let dead=false;
- const tl=[`<li><span class="dot approved">✓</span><div><b>${L('قُدّم الطلب','Request submitted')}</b> — ${nm(e)}<div class="when">${fG(r.at)} · ${fH(r.at)} · <span class="num">${fT(r.at)}</span></div></div></li>`]
+ const tl=[`<li><span class="dot approved">✓</span><div><b>${L('قُدّم الطلب','Request submitted')}</b> — ${nm(e)}<div class="when">${fG(r.at)} · ${fH(r.at)} · <span class="num">${fT(r.at)}</span></div>${r.via?`<div class="via">${L('نُفّذ من حساب مدير النظام للتجربة','Done from the system admin account for testing')}</div>`:''}</div></li>`]
  .concat(r.stages.map((s,i)=>{const a=emp(s.by),prev=i?r.stages[i-1].at:r.at;let cls='',mark=i+1,st='';
   if(s.decision==='approved'){cls='approved';mark='✓';st=L('اعتمد','Approved')}else if(s.decision==='rejected'){cls='rejected';mark='✕';st=L('رفض','Rejected');dead=true}else if(c===s){cls='now';st=L('بانتظار الاعتماد','Awaiting approval')}else st=dead?L('لم يصل إلى هذه المرحلة','Not reached'):L('مرحلة قادمة','Upcoming');
   return `<li class="${s.decision==='rejected'?'rej':''}"><span class="dot ${cls}">${mark}</span><div><b>${o2(STAGE[s.key])}</b> — ${nm(a)} · ${st}
    ${s.at?`<div class="when">${fG(s.at)} · ${fH(s.at)} · <span class="num">${fT(s.at)}</span> · ${L('بعد','after')} ${fDur(s.at-prev)}</div>`:c===s?`<div class="when">${L('منذ','Waiting for')} ${fDur(now()-prev)}</div>`:''}
-   ${s.note?`<q>${esc(s.note)}</q>`:''}</div></li>`}));
+   ${s.via&&s.decision?`<div class="via">${L('نُفّذ من حساب مدير النظام للتجربة','Done from the system admin account for testing')}</div>`:''}${s.note?`<q>${esc(s.note)}</q>`:''}</div></li>`}));
  if(r.status==='approved')tl.push(`<li><span class="dot approved">✓</span><div><b>${L('اكتمل الاعتماد','Fully approved')}</b><div class="when">${L('المدة الكلية','Total time')}: ${fDur(r.closedAt-r.at)}</div></div></li>`);
  let act='';
  if(mineTurn)act=`<div class="act"><div class="f"><label for="note">${L('ملاحظتك (اختيارية عند الاعتماد، مطلوبة عند الرفض)','Your note (optional to approve, required to reject)')}</label><textarea id="note" ${m.err?'aria-invalid="true"':''}>${esc(m.note||'')}</textarea>${m.err?`<span class="err">${L('اكتب سبب الرفض ليصل إلى مقدّم الطلب.','Write the reason so the requester can see it.')}</span>`:''}</div>
@@ -784,7 +805,7 @@ async function submit(){readForm();const m=S.modal,t=m.type,d=m.d;m.errs=validat
  if(stages.some(s=>!s.by)){toast(L('لم يُحدَّد معتمد لإحدى مراحل هذا الطلب. راجع مدير النظام.','An approver is not set for one stage of this request. Contact the system admin.'));return}
  if(m.busy)return;m.busy=true;
  try{const ref=await BE.nextRef(),at=now();
-  const r={ref,type:t,emp:S.user,empMgr:t==='letter'?'':(meE.mgr||''),at,d:data,stages,status:'pending',closedAt:null,pendingWith:stages.length?stages[0].by:null,approvers:[...new Set(stages.map(s=>s.by))],snap:null,serial:null};
+  const r={ref,type:t,emp:S.user,empMgr:t==='letter'?'':(meE.mgr||''),at,d:data,stages,status:'pending',closedAt:null,pendingWith:stages.length?stages[0].by:null,approvers:[...new Set(stages.map(s=>s.by))],snap:null,serial:null};if(S.as)r.via='admin';
   if(!stages.length)Object.assign(r,finalPatch(r,at));
   r.id=await BE.addRequest(r);if(!S.reqs.some(x=>x.id===r.id))S.reqs.push(r);
   S.tab='mine';S.f={q:'',type:'',status:''};S.modal={kind:'detail',id:r.id};
@@ -798,7 +819,7 @@ function empsPanel(){const l=Object.values(S.emps).sort((a,b)=>String(a.no).loca
  return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn sm" data-act="imp-tpl">${L('قالب Excel','Excel template')}</button><label class="btn sm" for="impfile" tabindex="0">${L('استيراد من Excel','Import from Excel')}</label><input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
  ${l.length?`<div class="rows emps"><div class="rhead"><span>${L('الرقم الوظيفي','Employee no.')}</span><span>${L('الاسم','Name')}</span><span>${L('القسم والمسمى','Department & title')}</span><span>${L('المدير المباشر','Line manager')}</span><span>${L('الحالة','Status')}</span></div>
  ${l.map(e=>{const tags=[];if(e.key===R.hr)tags.push(o2(STAGE.hr));if(e.key===R.fin)tags.push(o2(STAGE.fin));if(e.key===R.ceo)tags.push(L('الإدارة العليا','Executive'));if(e.admin)tags.push(L('مدير نظام','Admin'));if(e.purch)tags.push(L('مشتريات','Purchasing'));
-  return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(e.key)}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}</span></button>`}).join('')}</div>`
+  return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(e.key)}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}${realOwner()&&!S.as&&e.key!==S.user&&e.active!==false?`<span class="asbtn" data-act="as-go" data-key="${esc(e.key)}" role="button">${L('دخول بحسابه','Use account')}</span>`:''}</span></button>`}).join('')}</div>`
  :`<div class="rows"><div class="empty"><b>${L('لا يوجد موظفون بعد','No employees yet')}</b>${L('اضغط «إضافة موظف» وابدأ بنفسك.','Use “Add employee” and start with yourself.')}</div></div>`}`}
 /* ----- Excel import ----- */
 const IMP=[['email','الإيميل','email'],['ar','الاسم بالعربي','name arabic'],['en','الاسم بالإنجليزي','name english'],['no','الرقم الوظيفي','employee no'],['deptAr','القسم بالعربي','department arabic'],['deptEn','القسم بالإنجليزي','department english'],['tAr','المسمى بالعربي','title arabic'],['tEn','المسمى بالإنجليزي','title english'],['hire','تاريخ التعيين','hire date'],['g','الجنس','gender'],['mgr','إيميل المدير المباشر','manager email'],['used','أيام الإجازة المستخدمة','leave days used'],['sal','الراتب','salary']];
@@ -948,9 +969,10 @@ function docHTML(r,dl,lvl){
  let body='',docDate=r.at;
  /* approvals table */
  let dead=false;
- const eap=(ar,en,ts)=>`<span class="eap">${D(ar,en)} <span class="ltr">${fS(ts)}</span> ${D('الساعة','at')} <span class="ltr">${fT(ts)}</span></span>`;
- const aRows=[`<tr><td>${D('مقدّم الطلب','Requester')}</td><td>${esc(nm(e,dl))}</td><td class="c"><span class="ok-t">${D('قُدِّم','Submitted')}</span></td><td class="c">${eap('قُدِّم إلكترونياً','Submitted electronically',r.at)}</td></tr>`]
- .concat(r.stages.map(s=>{const a=emp(s.by);let dec,sg='';if(s.decision==='approved'){dec=`<span class="ok-t">${D('معتمد','Approved')}</span>`;sg=eap('تمت الموافقة إلكترونياً','Approved electronically',s.at)}else if(s.decision==='rejected'){dec=`<span class="no-t">${D('مرفوض','Rejected')}</span>`;sg=eap('رُفض إلكترونياً','Rejected electronically',s.at).replace('class="eap"','class="eap no"');dead=true}else dec=`<span class="wt-t">${dead?'—':D('بانتظار الاعتماد','Pending')}</span>`;
+ const viaD=v=>v?`<small>${D('نُفّذ من حساب مدير النظام للتجربة','Done from the system admin account for testing')}</small>`:'';
+ const eap=(ar,en,ts,v)=>`<span class="eap">${D(ar,en)} <span class="ltr">${fS(ts)}</span> ${D('الساعة','at')} <span class="ltr">${fT(ts)}</span>${viaD(v)}</span>`;
+ const aRows=[`<tr><td>${D('مقدّم الطلب','Requester')}</td><td>${esc(nm(e,dl))}</td><td class="c"><span class="ok-t">${D('قُدِّم','Submitted')}</span></td><td class="c">${eap('قُدِّم إلكترونياً','Submitted electronically',r.at,r.via)}</td></tr>`]
+ .concat(r.stages.map(s=>{const a=emp(s.by);let dec,sg='';if(s.decision==='approved'){dec=`<span class="ok-t">${D('معتمد','Approved')}</span>`;sg=eap('تمت الموافقة إلكترونياً','Approved electronically',s.at,s.via)}else if(s.decision==='rejected'){dec=`<span class="no-t">${D('مرفوض','Rejected')}</span>`;sg=eap('رُفض إلكترونياً','Rejected electronically',s.at,s.via).replace('class="eap"','class="eap no"');dead=true}else dec=`<span class="wt-t">${dead?'—':D('بانتظار الاعتماد','Pending')}</span>`;
   return `<tr><td>${o2(STAGE[s.key],dl)}</td><td>${esc(nm(a,dl))}</td><td class="c">${dec}</td><td class="c">${sg}</td></tr>`}));
  const appr=sec(D('الاعتمادات','Approvals'),`<table class="dc-t dc-appr"><colgroup><col style="width:19%"><col style="width:25%"><col style="width:14%"><col style="width:42%"></colgroup><thead><tr><th>${D('المرحلة','Stage')}</th><th>${D('الاسم','Name')}</th><th class="c">${D('القرار','Decision')}</th><th class="c">${D('الاعتماد الإلكتروني (التاريخ والوقت)','Electronic approval (date and time)')}</th></tr></thead><tbody>${aRows.join('')}</tbody></table>`);
  const rej=r.stages.find(s=>s.decision==='rejected');
@@ -998,7 +1020,7 @@ function docHTML(r,dl,lvl){
    <p>${p2t}</p>
    <div>${A?'وتقبلوا وافر التحية والتقدير،':'Yours faithfully,'}</div>
    <div class="lt-sign">${signed?`<img${CO.stamp?' class="co"':''} src="${stampURL(r)}" alt="">`:`<div class="dc-ph">${rej?D('غير معتمد','Not approved'):D('موضع الختم','Stamp here')}</div>`}
-    <div class="blk"><b>${ttl(a,dl)}</b>${signed?`<span class="eap">${D('تمت الموافقة إلكترونياً','Approved electronically')}<br><span class="ltr">${fS(r.closedAt)}</span> ${D('الساعة','at')} <span class="ltr">${fT(r.closedAt)}</span></span>`:`<div style="height:46px;font-size:11px;color:#8a9a92;padding-top:14px">${rej?D('رُفض الطلب: ','Rejected: ')+esc(rej.note):D('بانتظار الاعتماد','Awaiting approval')}</div>`}<b>${nm(a,dl)}</b></div></div>
+    <div class="blk"><b>${ttl(a,dl)}</b>${signed?`<span class="eap">${D('تمت الموافقة إلكترونياً','Approved electronically')}<br><span class="ltr">${fS(r.closedAt)}</span> ${D('الساعة','at')} <span class="ltr">${fT(r.closedAt)}</span>${(r.via||r.stages.some(x=>x.via))?`<small>${D('نُفّذ من حساب مدير النظام للتجربة','Done from the system admin account for testing')}</small>`:''}</span>`:`<div style="height:46px;font-size:11px;color:#8a9a92;padding-top:14px">${rej?D('رُفض الطلب: ','Rejected: ')+esc(rej.note):D('بانتظار الاعتماد','Awaiting approval')}</div>`}<b>${nm(a,dl)}</b></div></div>
   </div>`}
  else main=`<div class="dc-main">${body}${appr}${seal}</div>`;
  const wm=r.status==='approved'?'':`<div class="dc-wm${rej?' rej':''}${A?'':' en'}">${rej?D('مرفوض','REJECTED'):D('قيد الاعتماد','PENDING APPROVAL')}</div>`;
@@ -1234,6 +1256,8 @@ const ACT={
   try{await decide(r,false,n);S.modal={kind:'detail',id:r.id};toast(L('رُفض الطلب وسُجّل السبب.','Rejected, and the reason was recorded.'))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()},
  signin(){S.loginErr=null;render();Promise.resolve().then(()=>BE.signIn()).catch(e=>{const c=e&&e.code;S.loginErr=c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'?null:c==='auth/popup-blocked'?L('المتصفح منع نافذة الدخول. اسمح بالنوافذ المنبثقة لهذا الموقع ثم حاول.','The browser blocked the sign-in window. Allow pop-ups for this site and try again.'):c==='auth/unauthorized-domain'?L('عنوان هذا الموقع غير مضاف في إعدادات الدخول. راجع مدير النظام.','This site address is not authorised for sign-in. Contact the system admin.'):L('تعذّر تسجيل الدخول. حاول مرة أخرى.','Sign-in failed. Try again.');console.error(e);render()})},
  signout(){S.modal=null;BE.signOut()},
+ 'as-go'(el,ev){ev.preventDefault();actAs(el.dataset.key)},
+ 'as-back'(){actBack()},
  'stamp-del'(){BE.saveConfig('company',{stamp:''}).then(()=>toast(L('أُزيل الختم.','Stamp removed.'))).catch(e=>toast(saveErr(e)))},
  'emp-new'(){S.modal={kind:'emp',key:null,d:blankEmp(),errs:{},sal0:null};renderOv()},
  'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||iso(now()),g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
@@ -1291,7 +1315,7 @@ document.addEventListener('click',ev=>{document.querySelectorAll('details.more[o
 
 /* ---------- boot ---------- */
 const th=store.get('uti.theme');if(th==='dark'||th==='light')document.documentElement.dataset.theme=th;
-function onUser(email,verified){S.reqs=[];S.sups={};S.pos=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
+function onUser(email,verified){S.as=null;S.realUser=null;S.reqs=[];S.sups={};S.pos=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
  if(!email){S.user=null;S.auth='out';render();return false}
  S.user=email.toLowerCase();if(!S.user.endsWith('@'+DOMAIN)||!verified){S.auth='denied';render();return false}
  S.auth='in';S.loginErr=null;render();return true}
@@ -1309,7 +1333,7 @@ function fbBE(){
   else if(S.emps[u])unsubs.push(SAL.doc(u).onSnapshot(d=>{S.sal=d.exists?{[u]:d.data().sal}:{};refresh()},fail));
   if(canPurch()){unsubs.push(db.collection('suppliers').onSnapshot(q=>{const m={};q.forEach(d=>{m[d.id]=Object.assign({},d.data(),{id:d.id})});S.sups=m;refresh()},fail));unsubs.push(db.collection('porders').onSnapshot(q=>{const a=[];q.forEach(d=>a.push(Object.assign({},d.data(),{id:d.id})));S.pos=a;refresh()},fail))}}
  function watch(){let gotE=false,gotR=false;
-  const go=()=>{if(!gotE||!gotR)return;S.ready=true;const b=isBoss(S.user)+'|'+canSeeSal()+'|'+canPurch();if(!started){started=true;wasBoss=b;if(S.emps[S.user]||isAdmin())watchData()}else if(b!==wasBoss){location.reload();return}refresh()};
+  const go=()=>{if(!gotE||!gotR)return;S.ready=true;const b=asReal(()=>isBoss(S.user)+'|'+canSeeSal()+'|'+canPurch());if(!started){started=true;wasBoss=b;if(S.emps[S.user]||isAdmin())watchData()}else if(b!==wasBoss){location.reload();return}refresh()};
   unsubs.push(CF.doc('company').onSnapshot(d=>{CO=Object.assign({},CO_DEF,d.exists?d.data():{});if(S.ready)refresh()},fail));
   unsubs.push(CF.doc('routing').onSnapshot(d=>{R=Object.assign({hr:'',fin:'',ceo:''},d.exists?d.data():{});gotR=true;go()},fail));
   unsubs.push(E.onSnapshot(q=>{const m={};q.forEach(d=>{m[d.id]=Object.assign({},d.data(),{key:d.id})});S.emps=m;gotE=true;go()},fail))}
@@ -1338,7 +1362,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
   if(canPurch()){S.sups={};Object.keys(M.sups||{}).forEach(k=>{S.sups[k]=Object.assign(cl(M.sups[k]),{id:k})});S.pos=cl(M.pos||[])}else{S.sups={};S.pos=[]}
   S.reqs=cl(M.reqs).filter(r=>isBoss(u)||r.emp===u||r.empMgr===u||r.approvers.includes(u));S.ready=true;refresh()}
  const login=e=>{if(e)store.set(UK,e);else store.del(UK);if(onUser(e,true))sync()};
- return {mock:true,login,
+ return {mock:true,login,resync:sync,
   init(){login(store.get(UK)||null)},
   signIn(){login(CFG.mock.user);return Promise.resolve()},
   signOut(){login(null);return Promise.resolve()},
