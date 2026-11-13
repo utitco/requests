@@ -390,6 +390,31 @@ select{padding-inline-end:28px}
   .rows.emps .row{grid-template-columns:minmax(0,1fr) auto}
   .rows.emps .row>span:nth-child(n+3){grid-column:1/-1}
 }
+
+/* ---------- supplier purchasing ---------- */
+.pwrap{border:1px solid var(--line);border-radius:12px;overflow:auto;max-height:72vh;background:var(--surface)}
+.pmx{border-collapse:separate;border-spacing:0;font-size:13px;min-width:100%}
+.pmx th,.pmx td{border-bottom:1px solid var(--line);border-inline-end:1px solid var(--line);padding:7px 10px;text-align:start;vertical-align:top;white-space:nowrap;background:var(--surface)}
+.pmx thead th{background:var(--surface-2);font-size:12px;font-weight:600;position:sticky;top:0;z-index:2}
+.pmx thead th .pills{margin-top:4px;flex-wrap:nowrap}
+.pmx thead th .pill{font-size:11px;padding:0 7px}
+.pmx .it{white-space:normal;min-width:270px;max-width:340px;position:sticky;inset-inline-start:0;z-index:1}
+.pmx thead .it{z-index:3}
+.pmx .it small{display:block;color:var(--ink-2);font-size:11.5px;line-height:1.45;overflow-wrap:anywhere}
+.pmx button{background:none;border:0;padding:0;font:inherit;font-weight:600;color:var(--brand-ink);text-decoration:underline;text-underline-offset:3px;text-align:start}
+.pmx td.q{text-align:end;font-variant-numeric:tabular-nums;direction:ltr}
+.pmx th.pd,.pmx td.pd{background:var(--ok-soft)}
+.pmx th.pr,.pmx td.pr{background:var(--bad-soft)}
+.pmx tfoot td{font-weight:600;background:var(--surface-2);position:sticky;bottom:0}
+.pmx tfoot tr:first-child td{bottom:33px}
+.pq{display:flex;flex-direction:column;gap:6px}
+.pq label{display:grid;grid-template-columns:minmax(0,1fr) 120px;gap:10px;align-items:center;border-bottom:1px solid var(--line);padding-bottom:6px}
+.pq label small{display:block;color:var(--ink-2);font-size:11.5px;overflow-wrap:anywhere}
+.phead .as{flex:1;min-width:240px}
+.kpi b{overflow-wrap:anywhere}
+@media (max-width:700px){.pmx .it{position:static;min-width:220px}.pmx tfoot td{position:static}}
+.kpi b span{font-size:inherit;color:inherit}
+.kpi small span{font-size:inherit}
 </style>
 </head>
 <body>
@@ -528,6 +553,7 @@ function summary(r,l){const d=r.d;l=l||S.lang;const A=l==='ar';switch(r.type){
 const isAdmin=()=>!!S.user&&(S.owner===true||S.user===(CFG.owner||'').toLowerCase()||(S.emps[S.user]||{}).admin===true);
 async function sha(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')}
 const isBoss=id=>!!id&&(id===R.hr||id===R.fin||id===R.ceo||(id===S.user&&isAdmin()));
+const canPurch=()=>isAdmin()||(!!S.user&&(S.emps[S.user]||{}).purch===true);
 const canManage=()=>isAdmin()||(!!S.user&&S.user===R.hr);
 const canSeeSal=()=>isAdmin()||(!!S.user&&(S.user===R.hr||S.user===R.fin));
 const isApprover=id=>isBoss(id)||allEmps().some(e=>e.mgr===id);
@@ -544,7 +570,7 @@ function pill(r){const st={pending:L('قيد المراجعة','In review'),appr
 const $=s=>document.querySelector(s);
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function gate(inner){return `<div class="gate"><div class="gcard"><img src="${LOGO}" alt="UTiTCo"><h1>${L('نظام الطلبات الداخلية','Internal Requests')}</h1>${inner}<div class="grow"><button class="iconbtn" data-act="lang">${L('English','عربي')}</button><button class="iconbtn" data-act="theme" aria-label="${L('تبديل الوضع الفاتح والداكن','Toggle light and dark')}">${themeNow()==='dark'?IC.sun:IC.moon}</button></div></div></div>`}
-function refresh(){const m=S.modal;if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp')){renderApp();return}render()}
+function refresh(){const m=S.modal;if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup')){renderApp();return}render()}
 function render(){renderApp();renderOv()}
 function renderApp(){
  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ar'?'rtl':'ltr';
@@ -560,6 +586,7 @@ function renderApp(){
  const tabs=[];if(has)tabs.push(['mine',L('طلباتي','My requests')]);
  if(appr)tabs.push(['queue',L('بانتظار اعتمادي','Awaiting my approval'),qn],['all',isBoss(S.user)?L('كل الطلبات','All requests'):L('طلبات الفريق','Team requests')],['stats',L('الإحصائيات','Statistics')]);
  tabs.push(['verify',L('التحقق من مستند','Verify a document')]);
+ if(canPurch())tabs.push(['purch',L('مشتريات المورّدين','Supplier purchasing')]);
  if(canManage())tabs.push(['emps',L('الموظفون','Employees')]);
  if(isAdmin())tabs.push(['settings',L('الإعدادات','Settings')]);
  if(!tabs.some(t=>t[0]===S.tab))S.tab=tabs[0][0];
@@ -592,7 +619,7 @@ function renderApp(){
  </div></footer>`;
 }
 
-function panel(){if(S.tab==='stats')return stats();if(S.tab==='verify')return verify();if(S.tab==='emps')return empsPanel();if(S.tab==='settings')return settingsPanel();
+function panel(){if(S.tab==='stats')return stats();if(S.tab==='verify')return verify();if(S.tab==='purch')return purchPanel();if(S.tab==='emps')return empsPanel();if(S.tab==='settings')return settingsPanel();
  return `<div class="tools">
   <input type="search" id="q" placeholder="${L('ابحث بالرقم المرجعي أو الاسم أو التفاصيل','Search by reference, name or details')}" value="${esc(S.f.q)}" aria-label="${L('بحث','Search')}">
   <select id="ft" aria-label="${L('النوع','Type')}"><option value="">${L('كل الأنواع','All types')}</option>${Object.keys(TYPES).map(k=>`<option value="${k}"${S.f.type===k?' selected':''}>${L(TYPES[k].ar,TYPES[k].en)}</option>`).join('')}</select>
@@ -645,7 +672,7 @@ function verify(){const refs=S.reqs.slice(0,3).map(r=>r.ref);let res='';
 /* ---------- overlays ---------- */
 function renderOv(){const m=S.modal,el=$('#ov');if(!m){el.innerHTML='';document.body.style.overflow='';return}
  document.body.style.overflow='hidden';
- el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
+ el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
  if(m.kind==='doc')fit();}
 function detailBody(r,l){const d=r.d,A=(l||S.lang)==='ar',kv=p=>`<dl class="kv">${p.filter(Boolean).map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('')}</dl>`;
  const dt=s=>`${fG(d2ts(s))} <small class="note">· ${fH(d2ts(s))}</small>`;
@@ -746,7 +773,7 @@ function saveErr(e){return e&&e.code==='permission-denied'?L('ليست لديك 
 function empsPanel(){const l=Object.values(S.emps).sort((a,b)=>String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
  return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn sm" data-act="imp-tpl">${L('قالب Excel','Excel template')}</button><label class="btn sm" for="impfile" tabindex="0">${L('استيراد من Excel','Import from Excel')}</label><input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
  ${l.length?`<div class="rows emps"><div class="rhead"><span>${L('الرقم الوظيفي','Employee no.')}</span><span>${L('الاسم','Name')}</span><span>${L('القسم والمسمى','Department & title')}</span><span>${L('المدير المباشر','Line manager')}</span><span>${L('الحالة','Status')}</span></div>
- ${l.map(e=>{const tags=[];if(e.key===R.hr)tags.push(o2(STAGE.hr));if(e.key===R.fin)tags.push(o2(STAGE.fin));if(e.key===R.ceo)tags.push(L('الإدارة العليا','Executive'));if(e.admin)tags.push(L('مدير نظام','Admin'));
+ ${l.map(e=>{const tags=[];if(e.key===R.hr)tags.push(o2(STAGE.hr));if(e.key===R.fin)tags.push(o2(STAGE.fin));if(e.key===R.ceo)tags.push(L('الإدارة العليا','Executive'));if(e.admin)tags.push(L('مدير نظام','Admin'));if(e.purch)tags.push(L('مشتريات','Purchasing'));
   return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(e.key)}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}</span></button>`}).join('')}</div>`
  :`<div class="rows"><div class="empty"><b>${L('لا يوجد موظفون بعد','No employees yet')}</b>${L('اضغط «إضافة موظف» وابدأ بنفسك.','Use “Add employee” and start with yourself.')}</div></div>`}`}
 /* ----- Excel import ----- */
@@ -792,7 +819,7 @@ function impView(m){const nw=m.items.filter(i=>i.isNew).length,up=m.items.length
  </div></div>`}
 async function doImport(){const m=S.modal;if(!m||m.kind!=='imp'||m.busy)return;m.busy=true;renderOv();const n=m.items.length;
  try{await BE.importEmployees(m.items);S.modal=null;toast(L(`استُورد ${n} موظف.`,`Imported ${n} employees.`))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()}
-function blankEmp(){return {email:'',ar:'',en:'',no:'',deptAr:'',deptEn:'',tAr:'',tEn:'',hire:iso(now()),g:'m',mgr:'',used:'0',sal:'',active:'yes',admin:'no'}}
+function blankEmp(){return {email:'',ar:'',en:'',no:'',deptAr:'',deptEn:'',tAr:'',tEn:'',hire:iso(now()),g:'m',mgr:'',used:'0',sal:'',active:'yes',admin:'no',purch:'no'}}
 function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  const inp=(n,type,v,ex)=>`<input type="${type}" id="f-${n}" name="${n}" value="${esc(v)}"${inv(n)}${type==='text'?' maxlength="80"':''} ${ex||''}>`;
  const sel=(n,opts,v)=>`<select id="f-${n}" name="${n}">${opts.map(o=>`<option value="${esc(o[0])}"${String(v)===String(o[0])?' selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
@@ -810,7 +837,7 @@ function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
    ${fld(m,'used',L('أيام الإجازة السنوية المستخدمة قبل النظام','Annual leave days used before this system'),inp('used','number',d.used,'min="0" max="60" step="1"'))}
    ${canSeeSal()?fld(m,'sal',L('الراتب الشهري (اختياري)','Monthly salary (optional)'),inp('sal','number',d.sal,'min="0" step="1" placeholder="—"'),false,L('يراه الموظف نفسه والموارد البشرية والمالية فقط.','Visible only to the employee, HR and Finance.')):''}
    ${fld(m,'active',L('حالة الحساب','Account status'),sel('active',[['yes',L('نشط','Active')],['no',L('موقوف (لا يستطيع الدخول)','Inactive (cannot sign in)')]],d.active))}
-   ${isAdmin()?fld(m,'admin',L('مدير نظام','System admin'),sel('admin',[['no',L('لا','No')],['yes',L('نعم','Yes')]],d.admin),false,L('يدير الموظفين والإعدادات ويرى كل الطلبات.','Manages employees and settings and sees all requests.')):''}
+   ${isAdmin()?fld(m,'admin',L('مدير نظام','System admin'),sel('admin',[['no',L('لا','No')],['yes',L('نعم','Yes')]],d.admin),false,L('يدير الموظفين والإعدادات ويرى كل الطلبات.','Manages employees and settings and sees all requests.'))+fld(m,'purch',L('صلاحية مشتريات المورّدين','Supplier purchasing access'),sel('purch',[['no',L('لا','No')],['yes',L('نعم','Yes')]],d.purch),false,L('يرى تبويب مشتريات المورّدين بما فيه التكلفة وسعر البيع.','Sees the supplier purchasing tab, including cost and selling price.')):''}
   </div></div>
   <div class="sh-f"><button type="button" class="btn" data-act="close">${L('إلغاء','Cancel')}</button><button type="submit" class="btn pri">${L('حفظ','Save')}</button></div>
  </form></div>`}
@@ -823,7 +850,7 @@ async function saveEmp(){readEmp();const m=S.modal,d=m.d,e={},req=L('هذا ال
  m.errs=e;if(Object.keys(e).length){renderOv();return}
  if(m.busy)return;m.busy=true;
  const data={ar:d.ar.trim(),en:d.en.trim(),no:d.no.trim(),deptAr:d.deptAr.trim(),deptEn:d.deptEn.trim(),tAr:d.tAr.trim(),tEn:d.tEn.trim()||d.tAr.trim(),hire:d.hire,g:d.g,mgr:d.mgr||'',used:Math.max(0,Math.round(+d.used||0)),active:d.active!=='no'};
- if(isAdmin())data.admin=d.admin==='yes';
+ if(isAdmin()){data.admin=d.admin==='yes';data.purch=d.purch==='yes'}
  let sal;if(canSeeSal()){const v=String(d.sal).trim();if(v!==String(m.sal0==null?'':m.sal0))sal=v===''?null:Math.round(+v)}
  try{await BE.saveEmployee(key,data,sal);S.modal=null;toast(L('حُفظت بيانات الموظف.','Employee saved.'))}catch(x){m.busy=false;console.error(x);toast(saveErr(x))}
  render()}
@@ -838,7 +865,7 @@ function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().sort((a,b)=
  </form>`}
 async function saveSettings(){const f=$('#sform'),v=n=>f.elements[n].value.trim();
  try{await BE.saveConfig('routing',{hr:v('hr'),fin:v('fin'),ceo:v('ceo')});await BE.saveConfig('company',{ar:v('ar')||CO_DEF.ar,en:v('en')||CO_DEF.en,unitAr:v('unitAr'),unitEn:v('unitEn'),addrAr:v('addrAr'),addrEn:v('addrEn')});toast(L('حُفظت الإعدادات.','Settings saved.'))}catch(x){console.error(x);toast(saveErr(x))}}
-async function backup(){const data={exportedAt:new Date().toISOString(),company:CO,routing:R,employees:S.emps,salaries:S.sal,requests:S.reqs};
+async function backup(){const data={exportedAt:new Date().toISOString(),company:CO,routing:R,employees:S.emps,salaries:S.sal,requests:S.reqs};if(canPurch()){data.suppliers=S.sups;data.purchaseOrders=S.pos}
  try{await saveFile('utitco-backup-'+iso(now())+'.json',new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));toast(L('نُزّلت النسخة الاحتياطية. احفظها في مكان آمن.','Backup downloaded. Keep it somewhere safe.'))}catch(x){toast(L('تعذّر تنزيل النسخة الاحتياطية.','Could not download the backup.'))}}
 
 
@@ -967,6 +994,101 @@ async function downloadPDF(){const m=S.modal;if(!m||m.kind!=='doc'||m.busy)retur
  catch(e){const c=e&&e.code;toast(c==='declined'?L('أُلغي التحميل.','Download cancelled.'):c==='rate_limited'?L('هناك نافذة حفظ مفتوحة. أكملها ثم حاول مرة أخرى.','A save prompt is already open. Finish it, then try again.'):c?L('حفظ الملفات غير متاح في هذا العرض. افتح الرابط من claude.ai وحاول مجدداً.','Saving files is not available in this view. Open the link in claude.ai and try again.'):L('تعذّر إنشاء ملف الـPDF. حاول مرة أخرى.','The PDF could not be created. Try again.'))}
  if(S.modal===m){m.busy=false;renderOv()}}
 
+/* ---------- supplier purchasing (admin + purchasing permission) ---------- */
+S.sups={};S.pos=[];S.psel=null;S.pdone=false;
+const PK=['po','pof','pit','psup'];
+const supList=()=>Object.values(S.sups).sort((a,b)=>String(a.code).localeCompare(String(b.code)));
+const curSup=()=>S.sups[S.psel]||supList()[0]||null;
+const supOrders=s=>S.pos.filter(o=>o.sup===s.id).sort((a,b)=>(a.seq||0)-(b.seq||0)||(a.createdAt||0)-(b.createdAt||0));
+const lineCost=(l,s)=>{const it=(s.items||[]).find(i=>i.id===l.item);return (+l.qty||0)*(l.cost!=null?+l.cost:(it?+it.cost||0:0))};
+const poTotal=(o,s)=>(o.lines||[]).reduce((t,l)=>t+lineCost(l,s),0);
+const poPaid=o=>(o.pays||[]).reduce((t,p)=>t+(+p.amt||0),0);
+const money2=(n,c)=>`<span class="num">${fN(n,2)}</span> ${esc(c||'USD')}`;
+function poPills(o,s){const t=poTotal(o,s),p=poPaid(o);let h=o.stage==='done'?`<span class="pill approved">${L('مستلمة','Received')}</span>`:o.stage==='request'?`<span class="pill rejected">${L('طلب مبدئي','Draft request')}</span>`:`<span class="pill pending">${L('مفتوحة','Open')}</span>`;
+ if(o.stage!=='request'&&t>0)h+=p>=t-0.5?`<span class="pill approved">${L('مدفوعة','Paid')}</span>`:p>0?`<span class="pill pending">${L('مدفوعة جزئياً','Part paid')}</span>`:o.stage==='done'?'':`<span class="pill rejected">${L('غير مدفوعة','Unpaid')}</span>`;return h}
+function purchPanel(){const sups=supList(),s=curSup();
+ const tools=`<label class="btn sm" for="pimp" tabindex="0">${L('استيراد ملف بيانات','Import data file')}</label><input type="file" id="pimp" accept=".json,application/json" hidden><button class="btn sm" data-act="psup-new">${IC.plus}${L('مورّد جديد','New supplier')}</button>`;
+ if(!s)return `<div class="phead"><p class="note">${L('متابعة طلبيات الشراء من المورّدين: الأصناف وأسعارها، كميات كل طلبية، الدفعات، والاستلام.','Track supplier purchase orders: items and prices, quantities per order, payments and receipt.')}</p><span class="pills">${tools}</span></div><div class="rows"><div class="empty"><b>${L('لا يوجد مورّدون بعد','No suppliers yet')}</b>${L('أضف مورّداً جديداً، أو استورد ملف بيانات جاهزاً.','Add a supplier, or import a prepared data file.')}</div></div>`;
+ const cur=s.currency||'USD',all=supOrders(s),done=all.filter(o=>o.stage==='done'),show=all.filter(o=>S.pdone||o.stage!=='done'),open=all.filter(o=>o.stage==='open'),items=s.items||[];
+ const openVal=open.reduce((t,o)=>t+poTotal(o,s),0),openPaid=open.reduce((t,o)=>t+poPaid(o),0),allVal=all.filter(o=>o.stage!=='request').reduce((t,o)=>t+poTotal(o,s),0);
+ const qty=(o,it)=>{const l=(o.lines||[]).find(l=>l.item===it.id);return l?+l.qty||0:null};
+ const cls=o=>o.stage==='done'?' pd':o.stage==='request'?' pr':'';
+ return `<div class="phead"><div class="as"><label for="psel">${L('المورّد','Supplier')}</label><select id="psel">${sups.map(x=>`<option value="${esc(x.id)}"${x.id===s.id?' selected':''}>${esc(x.code)} — ${esc(x.name||'')}</option>`).join('')}</select><button class="btn sm" data-act="psup-edit">${L('تعديل','Edit')}</button></div>
+  <span class="pills"><button class="btn sm" data-act="p-xlsx">${IC.dl}${L('تصدير Excel','Export Excel')}</button>${tools}<button class="btn sm" data-act="pit-new">${IC.plus}${L('صنف جديد','New item')}</button><button class="btn pri sm" data-act="pof-new"${items.length?'':' disabled'}>${IC.plus}${L('طلبية جديدة','New order')}</button></span></div>
+ <div class="kpis"><div class="kpi"><span>${L('طلبيات مفتوحة','Open orders')}</span><b class="num">${open.length}</b><small>${L('مكتملة','Received')}: <span class="num">${done.length}</span></small></div>
+  <div class="kpi"><span>${L('قيمة الطلبيات المفتوحة','Value of open orders')}</span><b>${money2(openVal,cur)}</b></div>
+  <div class="kpi${openVal-openPaid>0.5?' bad':''}"><span>${L('المتبقي دفعه على المفتوحة','Still to pay on open orders')}</span><b>${money2(Math.max(0,openVal-openPaid),cur)}</b><small>${L('المدفوع','Paid')}: ${money2(openPaid,cur)}</small></div>
+  <div class="kpi"><span>${L('إجمالي المشتريات من المورّد','Total purchased from supplier')}</span><b>${money2(allVal,cur)}</b><small>${L('عدد الطلبيات','Orders')}: <span class="num">${all.filter(o=>o.stage!=='request').length}</span></small></div></div>
+ <div class="phead"><p class="note">${L('كل عمود طلبية. اضغط رقم الطلبية لعرض تفاصيلها ودفعاتها. الطلبيات المستلمة مخفية مثل ما في ملف Excel، وتظهر بالزر.','Each column is an order. Click an order number for its details and payments. Received orders are hidden as in the Excel file, and the button shows them.')}</p>${done.length?`<button class="btn sm" data-act="p-toggle">${S.pdone?L('إخفاء الطلبيات المستلمة','Hide received orders'):L('إظهار الطلبيات المستلمة','Show received orders')} <span class="num">(${done.length})</span></button>`:''}</div>
+ ${items.length?`<div class="pwrap"><table class="pmx"><thead><tr><th>SN</th><th class="it">${L('الصنف','Item')}</th><th>${L('التكلفة','Unit cost')}</th><th>${L('سعر البيع','Selling price')}</th>${show.map(o=>`<th class="${cls(o).trim()}"><button data-act="po-open" data-id="${esc(o.id)}">${esc(o.no||'—')}</button><span class="pills">${poPills(o,s)}</span></th>`).join('')}<th>${L('إجمالي الكمية','Total qty')}</th></tr></thead>
+  <tbody>${items.map(it=>{const tot=all.filter(o=>o.stage!=='request').reduce((t,o)=>t+(qty(o,it)||0),0);return `<tr><td class="num">${esc(it.sn||'')}</td><td class="it"><button data-act="pit-edit" data-id="${esc(it.id)}"><b class="num">${esc(it.cat||'—')}</b></button><small>${esc(it.desc||'')}</small><small class="num">NUPCO ${esc(it.nupco||'—')}${it.award?' · '+esc(it.award):''}</small></td><td class="q">${fN(+it.cost||0,2)}</td><td class="q">${it.price!=null&&it.price!==''?fN(+it.price,2):'—'}</td>${show.map(o=>{const q=qty(o,it);return `<td class="q${cls(o)}">${q==null?'':fN(q)}</td>`}).join('')}<td class="q"><b>${fN(tot)}</b></td></tr>`}).join('')}</tbody>
+  <tfoot><tr><td colspan="4">${L('تكلفة الطلبية','Order cost')} (${esc(cur)})</td>${show.map(o=>`<td class="q${cls(o)}">${fN(poTotal(o,s),2)}</td>`).join('')}<td></td></tr><tr><td colspan="4">${L('المدفوع','Paid')} (${esc(cur)})</td>${show.map(o=>`<td class="q${cls(o)}">${poPaid(o)?fN(poPaid(o),2):'—'}</td>`).join('')}<td></td></tr></tfoot></table></div>`
+ :`<div class="rows"><div class="empty"><b>${L('لا توجد أصناف لهذا المورّد','No items for this supplier')}</b>${L('أضف الأصناف أولاً، ثم أنشئ الطلبيات.','Add items first, then create orders.')}</div></div>`}`}
+function purchOv(m){const s=curSup();if(!s&&m.kind!=='psup'){S.modal=null;return ''}
+ const cur=s?s.currency||'USD':'USD',x=`<button type="button" class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button>`;
+ const inp=(n,type,v,ex)=>`<input type="${type}" id="p-${n}" name="${n}" value="${esc(v==null?'':v)}"${type==='text'?' maxlength="200"':''} ${ex||''}>`;
+ const f=(n,label,inner,wide,hint)=>`<div class="f${wide?' wide':''}"><label for="p-${n}">${label}</label>${inner}${hint?`<span class="hint">${hint}</span>`:''}${m.errs&&m.errs[n]?`<span class="err">${m.errs[n]}</span>`:''}</div>`;
+ const foot=del=>`<div class="sh-f">${del?`<button type="button" class="btn no" data-act="${del}" style="margin-inline-end:auto">${m.ask?L('تأكيد الحذف','Confirm delete'):L('حذف','Delete')}</button>`:''}<button type="button" class="btn" data-act="close">${L('إلغاء','Cancel')}</button><button type="submit" class="btn pri">${L('حفظ','Save')}</button></div>`;
+ if(m.kind==='po'){const o=S.pos.find(o=>o.id===m.id);if(!o){S.modal=null;return ''}const t=poTotal(o,s),p=poPaid(o);
+  return `<div class="ov side" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true">
+   <div class="sh-h"><h2><span class="num">${esc(o.no||'—')}</span> · ${esc(s.code)}</h2><span class="pills">${poPills(o,s)}</span>${x}</div>
+   <div class="sh-b">
+    <div class="sec"><h3>${L('الأصناف','Items')}</h3><div class="scroll-x"><table class="mini"><thead><tr><th>${L('الصنف','Item')}</th><th>${L('الكمية','Qty')}</th><th>${L('تكلفة الوحدة','Unit cost')}</th><th>${L('التكلفة','Cost')}</th></tr></thead><tbody>${(o.lines||[]).map(l=>{const it=(s.items||[]).find(i=>i.id===l.item)||{};return `<tr><td><b class="num">${esc(it.cat||'—')}</b></td><td class="num">${fN(+l.qty||0)}</td><td class="num">${fN(l.cost!=null?+l.cost:+it.cost||0,2)}</td><td class="num">${fN(lineCost(l,s),2)}</td></tr>`}).join('')}</tbody></table></div>
+     <dl class="kv" style="margin-top:10px"><dt>${L('إجمالي التكلفة','Total cost')}</dt><dd><b>${money2(t,cur)}</b></dd><dt>${L('المدفوع','Paid')}</dt><dd>${money2(p,cur)}</dd><dt>${L('المتبقي','Remaining')}</dt><dd>${money2(Math.max(0,t-p),cur)}</dd></dl></div>
+    <div class="sec"><h3>${L('الشحن والاستلام','Shipping and receipt')}</h3><dl class="kv"><dt>${L('تاريخ الطلبية','Order date')}</dt><dd>${o.odate?fG(d2ts(o.odate)):'—'}</dd><dt>${L('الشحن','Shipping')}</dt><dd>${esc(o.ship||'—')}</dd><dt>${L('تاريخ الاستلام','Received on')}</dt><dd>${o.gr?fG(d2ts(o.gr)):(o.stage==='done'?L('مستلمة (التاريخ غير مسجّل)','Received (date not recorded)'):'—')}</dd>${o.note?`<dt>${L('ملاحظات','Notes')}</dt><dd>${esc(o.note)}</dd>`:''}${o.raw?`<dt>${L('النص الأصلي في Excel','Original Excel text')}</dt><dd class="note">${esc(o.raw)}</dd>`:''}</dl></div>
+    <div class="sec"><h3>${L('الدفعات','Payments')}</h3>${(o.pays||[]).length?`<table class="mini"><tbody>${o.pays.map((y,i)=>`<tr><td class="num">${fN(+y.amt||0,2)} ${esc(cur)}</td><td>${y.date?fG(d2ts(y.date)):L('بدون تاريخ','No date')}</td><td>${esc(y.note||'')}</td><td><button class="x" data-act="pay-del" data-i="${i}" aria-label="${L('حذف الدفعة','Remove payment')}">${IC.x}</button></td></tr>`).join('')}</tbody></table>`:`<p class="note">${L('لا توجد دفعات مسجّلة.','No payments recorded.')}</p>`}
+     <form id="payform" class="act" style="margin-top:10px" novalidate><div class="grid2"><div class="f"><label for="pay-amt">${L('مبلغ الدفعة','Payment amount')} (${esc(cur)})</label><input type="number" id="pay-amt" name="amt" min="0" step="0.01"></div><div class="f"><label for="pay-date">${L('تاريخ الدفع','Paid on')}</label><input type="date" id="pay-date" name="date" value="${iso(now())}"></div><div class="f wide"><label for="pay-note">${L('ملاحظة (اختياري)','Note (optional)')}</label><input type="text" id="pay-note" name="note" maxlength="120"></div></div><div><button type="submit" class="btn sm">${IC.plus}${L('إضافة دفعة','Add payment')}</button></div></form></div>
+   </div>
+   <div class="sh-f"><button class="btn" data-act="pof-edit" data-id="${esc(o.id)}">${L('تعديل الطلبية','Edit order')}</button>${o.stage==='done'?`<button class="btn" data-act="po-reopen">${L('إعادة فتح','Reopen')}</button>`:`<button class="btn pri" data-act="po-receive">${L('تسجيل الاستلام اليوم','Mark received today')}</button>`}</div>
+  </div></div>`}
+ if(m.kind==='pof'){const d=m.d;return `<div class="ov mid" data-act="close-bg"><form class="sheet" id="pofform" role="dialog" aria-modal="true" novalidate>
+   <div class="sh-h"><h2>${m.id?L('تعديل طلبية','Edit order'):L('طلبية جديدة','New order')} · ${esc(s.code)}</h2>${x}</div>
+   <div class="sh-b"><div class="grid2">${f('no',L('رقم الطلبية أو الفاتورة','Order or invoice no.'),inp('no','text',d.no,'dir="ltr" placeholder="PI 266152"'))}${f('stage',L('الحالة','Status'),`<select id="p-stage" name="stage">${[['request',L('طلب مبدئي','Draft request')],['open',L('مفتوحة','Open')],['done',L('مستلمة','Received')]].map(a=>`<option value="${a[0]}"${d.stage===a[0]?' selected':''}>${a[1]}</option>`).join('')}</select>`)}${f('odate',L('تاريخ الطلبية (اختياري)','Order date (optional)'),inp('odate','date',d.odate))}${f('gr',L('تاريخ الاستلام (اختياري)','Received on (optional)'),inp('gr','date',d.gr))}${f('ship',L('الشحن (اختياري)','Shipping (optional)'),inp('ship','text',d.ship,`placeholder="${L('مثال: مع شحنة أخرى','e.g. with another shipment')}"`),true)}${f('note',L('ملاحظات (اختياري)','Notes (optional)'),`<textarea id="p-note" name="note" maxlength="400">${esc(d.note||'')}</textarea>`,true)}</div>
+    <div class="sec"><h3>${L('الكميات (اترك الصنف فارغاً إذا لم يكن في الطلبية)','Quantities (leave an item empty if it is not in the order)')}</h3>${m.errs.lines?`<span class="err">${m.errs.lines}</span>`:''}<div class="pq">${(s.items||[]).map(it=>`<label for="q-${esc(it.id)}"><span><b class="num">${esc(it.cat||'—')}</b><small>${esc(String(it.desc||'').slice(0,70))}</small></span><input type="number" id="q-${esc(it.id)}" name="q_${esc(it.id)}" min="0" step="1" value="${esc(d.q[it.id]==null?'':d.q[it.id])}" placeholder="0"></label>`).join('')}</div></div></div>
+   ${foot(m.id&&isAdmin()?'po-del':'')}</form></div>`}
+ if(m.kind==='pit'){const d=m.d;return `<div class="ov mid" data-act="close-bg"><form class="sheet" id="pitform" role="dialog" aria-modal="true" novalidate>
+   <div class="sh-h"><h2>${m.id?L('تعديل صنف','Edit item'):L('صنف جديد','New item')} · ${esc(s.code)}</h2>${x}</div>
+   <div class="sh-b"><div class="grid2">${f('cat',L('رقم الكتالوج','Catalog no.'),inp('cat','text',d.cat,'dir="ltr"'))}${f('nupco',L('كود نوبكو','NUPCO code'),inp('nupco','text',d.nupco,'dir="ltr"'))}${f('sn','SN',inp('sn','text',d.sn,'dir="ltr"'))}${f('award',L('الترسية (اختياري)','Award (optional)'),inp('award','text',d.award,'dir="ltr" placeholder="LOWEST PRICE / SOLO"'))}${f('cost',L('تكلفة الوحدة','Unit cost')+' ('+esc(cur)+')',inp('cost','number',d.cost,'min="0" step="0.0001"'))}${f('price',L('سعر البيع (اختياري)','Selling price (optional)'),inp('price','number',d.price,'min="0" step="0.01"'))}${f('mfr',L('المصنّع (اختياري)','Manufacturer (optional)'),inp('mfr','text',d.mfr),true)}${f('desc',L('وصف الصنف','Item description'),`<textarea id="p-desc" name="desc" maxlength="500" dir="ltr">${esc(d.desc||'')}</textarea>`,true)}</div></div>
+   ${foot('')}</form></div>`}
+ const d=m.d;return `<div class="ov mid" data-act="close-bg"><form class="sheet" id="psupform" role="dialog" aria-modal="true" novalidate>
+   <div class="sh-h"><h2>${m.id?L('تعديل مورّد','Edit supplier'):L('مورّد جديد','New supplier')}</h2>${x}</div>
+   <div class="sh-b"><div class="grid2">${f('code',L('رمز المورّد','Supplier code'),inp('code','text',d.code,'dir="ltr" placeholder="CRR"'))}${f('currency',L('عملة الشراء','Purchase currency'),inp('currency','text',d.currency,'dir="ltr" placeholder="USD"'))}${f('name',L('اسم المورّد','Supplier name'),inp('name','text',d.name),true)}${f('country',L('الدولة (اختياري)','Country (optional)'),inp('country','text',d.country),true)}</div></div>
+   ${foot('')}</form></div>`}
+const pval=(id,n)=>{const f=$('#'+id);return f&&f.elements[n]?String(f.elements[n].value).trim():''};
+const pclean=o=>{const c=Object.assign({},o);delete c.id;return c};
+async function psave(col,id,data,msg){const m=S.modal;if(m&&m.busy)return;if(m)m.busy=true;try{const nid=await BE.savePurch(col,id,data);toast(msg);return nid}catch(e){if(m)m.busy=false;console.error(e);toast(saveErr(e));return null}}
+async function savePof(){const m=S.modal,s=curSup(),req=L('هذا الحقل مطلوب','This field is required');m.errs={};
+ const no=pval('pofform','no'),lines=[];(s.items||[]).forEach(it=>{const q=Math.round(+pval('pofform','q_'+it.id)||0);m.d.q[it.id]=pval('pofform','q_'+it.id);if(q>0){const old=m.id&&(S.pos.find(o=>o.id===m.id).lines||[]).find(l=>l.item===it.id);lines.push({item:it.id,qty:q,cost:old&&old.cost!=null?old.cost:+it.cost||0})}});
+ ['no','stage','odate','gr','ship','note'].forEach(k=>{m.d[k]=pval('pofform',k)});
+ if(!no)m.errs.no=req;if(!lines.length)m.errs.lines=L('أدخل كمية لصنف واحد على الأقل','Enter a quantity for at least one item');
+ if(Object.keys(m.errs).length){renderOv();return}
+ const old=m.id?S.pos.find(o=>o.id===m.id):null,all=supOrders(s);
+ const data=Object.assign(old?pclean(old):{sup:s.id,pays:[],seq:(all.length?Math.max(...all.map(o=>o.seq||0)):0)+1,createdAt:now()},{no,stage:m.d.stage,odate:m.d.odate,gr:m.d.gr,ship:m.d.ship,note:m.d.note,lines});
+ if(data.gr&&data.stage==='open')data.stage='done';
+ const id=await psave('porders',m.id,data,L('حُفظت الطلبية.','Order saved.'));if(id){S.modal={kind:'po',id};render()}}
+async function savePit(){const m=S.modal,s=curSup(),req=L('هذا الحقل مطلوب','This field is required');m.errs={};
+ ['cat','nupco','sn','award','cost','price','mfr','desc'].forEach(k=>{m.d[k]=pval('pitform',k)});
+ if(!m.d.cat)m.errs.cat=req;if(!(+m.d.cost>0))m.errs.cost=L('أدخل تكلفة أكبر من صفر','Enter a cost above zero');
+ if(Object.keys(m.errs).length){renderOv();return}
+ const it={id:m.id||'i'+now().toString(36),cat:m.d.cat,nupco:m.d.nupco,sn:m.d.sn,award:m.d.award,cost:+m.d.cost,price:m.d.price===''?null:+m.d.price,mfr:m.d.mfr,desc:m.d.desc};
+ const items=(s.items||[]).slice(),i=items.findIndex(x=>x.id===it.id);if(i>=0)items[i]=it;else items.push(it);
+ if(await psave('suppliers',s.id,Object.assign(pclean(s),{items}),L('حُفظ الصنف.','Item saved.'))){S.modal=null;render()}}
+async function savePsup(){const m=S.modal,req=L('هذا الحقل مطلوب','This field is required');m.errs={};['code','name','country','currency'].forEach(k=>{m.d[k]=pval('psupform',k)});
+ if(!m.d.code)m.errs.code=req;if(!m.d.name)m.errs.name=req;if(Object.keys(m.errs).length){renderOv();return}
+ const old=m.id?S.sups[m.id]:null,data=Object.assign(old?pclean(old):{items:[],createdAt:now()},{code:m.d.code.toUpperCase(),name:m.d.name,country:m.d.country,currency:(m.d.currency||'USD').toUpperCase()});
+ const id=await psave('suppliers',m.id,data,L('حُفظ المورّد.','Supplier saved.'));if(id){S.psel=id;S.modal=null;render()}}
+async function poPatch(fn,msg){const m=S.modal,o=m&&S.pos.find(o=>o.id===m.id);if(!o)return;const d=pclean(o);d.pays=(d.pays||[]).slice();fn(d);m.busy=false;if(await psave('porders',o.id,d,msg)){S.modal={kind:'po',id:o.id};render()}}
+async function purchImport(file){if(!file)return;let j;try{j=JSON.parse(await file.text())}catch(e){toast(L('الملف غير صالح. اختر ملف البيانات بصيغة JSON.','Invalid file. Choose the JSON data file.'));return}
+ if(!j||!j.supplier||!j.supplier.code||!Array.isArray(j.orders)){toast(L('الملف لا يحتوي بيانات مورّد وطلبيات.','The file has no supplier and order data.'));return}
+ try{S.psel=await BE.importPurch(j);toast(L(`استُورد المورّد ${j.supplier.code} مع ${j.orders.length} طلبية.`,`Imported supplier ${j.supplier.code} with ${j.orders.length} orders.`))}catch(e){console.error(e);toast(saveErr(e))}render()}
+async function purchXlsx(){const s=curSup();if(!s)return;try{await loadXLSX();const X=window.XLSX,os=supOrders(s),items=s.items||[];
+  const head=['SN','NUPCO Code','Item Description','Manufacturer','Catalog No','Unit Cost','Selling Price','Award'];os.forEach(o=>{head.push('Q '+(o.no||''),'Cost '+(o.no||''))});head.push('Total Q');
+  const rows=items.map(it=>{const r=[it.sn||'',it.nupco||'',it.desc||'',it.mfr||'',it.cat||'',+it.cost||0,it.price==null?'':+it.price,it.award||''];let t=0;os.forEach(o=>{const l=(o.lines||[]).find(l=>l.item===it.id);if(l){r.push(+l.qty||0,Math.round(lineCost(l,s)*100)/100);if(o.stage!=='request')t+=+l.qty||0}else r.push('','')});r.push(t);return r});
+  const pad=['','','','','','','',''],mk=(label,fn)=>{const r=pad.slice();r[2]=label;os.forEach(o=>{r.push('',fn(o))});return r};
+  const aoa=[head].concat(rows,[mk('Order cost ('+(s.currency||'USD')+')',o=>Math.round(poTotal(o,s)*100)/100),mk('Paid',o=>Math.round(poPaid(o)*100)/100),mk('Status',o=>o.stage==='done'?'Received'+(o.gr?' '+o.gr:''):o.stage==='request'?'Request':'Open'),mk('Notes',o=>[o.ship,o.note].filter(Boolean).join(' | '))]);
+  const ws=X.utils.aoa_to_sheet(aoa);ws['!cols']=head.map((h,i)=>({wch:i===2?60:i<8?16:14}));const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,String(s.code).slice(0,28));
+  await saveFile(s.code+'-purchasing-'+iso(now())+'.xlsx',new Blob([X.write(wb,{bookType:'xlsx',type:'array'})]));toast(L('نُزّل ملف Excel.','Excel file downloaded.'))}catch(e){console.error(e);toast(L('تعذّر التصدير. تحقق من الاتصال.','Export failed. Check your connection.'))}}
+
 /* ---------- toast + events ---------- */
 let toastT;
 function toast(msg){clearTimeout(toastT);const el=$('#toast');el.innerHTML=`<div role="status"><span>${esc(msg)}</span></div>`;toastT=setTimeout(()=>{el.innerHTML=''},5000)}
@@ -988,8 +1110,21 @@ const ACT={
  signin(){S.loginErr=null;render();Promise.resolve().then(()=>BE.signIn()).catch(e=>{const c=e&&e.code;S.loginErr=c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'?null:c==='auth/popup-blocked'?L('المتصفح منع نافذة الدخول. اسمح بالنوافذ المنبثقة لهذا الموقع ثم حاول.','The browser blocked the sign-in window. Allow pop-ups for this site and try again.'):c==='auth/unauthorized-domain'?L('عنوان هذا الموقع غير مضاف في إعدادات الدخول. راجع مدير النظام.','This site address is not authorised for sign-in. Contact the system admin.'):L('تعذّر تسجيل الدخول. حاول مرة أخرى.','Sign-in failed. Try again.');console.error(e);render()})},
  signout(){S.modal=null;BE.signOut()},
  'emp-new'(){S.modal={kind:'emp',key:null,d:blankEmp(),errs:{},sal0:null};renderOv()},
- 'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||iso(now()),g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no'})};renderOv()},
+ 'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||iso(now()),g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
  backup(){backup()},
+ 'p-toggle'(){S.pdone=!S.pdone;render()},
+ 'p-xlsx'(){purchXlsx()},
+ 'po-open'(el){S.modal={kind:'po',id:el.dataset.id};renderOv()},
+ 'pof-new'(){S.modal={kind:'pof',id:null,errs:{},d:{no:'',stage:'open',odate:iso(now()),gr:'',ship:'',note:'',q:{}}};renderOv()},
+ 'pof-edit'(el){const o=S.pos.find(o=>o.id===el.dataset.id);if(!o)return;const q={};(o.lines||[]).forEach(l=>{q[l.item]=l.qty});S.modal={kind:'pof',id:o.id,errs:{},d:{no:o.no||'',stage:o.stage||'open',odate:o.odate||'',gr:o.gr||'',ship:o.ship||'',note:o.note||'',q}};renderOv()},
+ 'po-receive'(){poPatch(d=>{d.stage='done';d.gr=d.gr||iso(now())},L('سُجّل استلام الطلبية.','Order marked as received.'))},
+ 'po-reopen'(){poPatch(d=>{d.stage='open';d.gr=''},L('أُعيد فتح الطلبية.','Order reopened.'))},
+ 'pay-del'(el){poPatch(d=>{d.pays.splice(+el.dataset.i,1)},L('حُذفت الدفعة.','Payment removed.'))},
+ async 'po-del'(){const m=S.modal;if(!m.ask){m.ask=true;renderOv();return}try{await BE.delPurch('porders',m.id);S.modal=null;toast(L('حُذفت الطلبية.','Order deleted.'))}catch(e){console.error(e);toast(saveErr(e))}render()},
+ 'pit-new'(){S.modal={kind:'pit',id:null,errs:{},d:{cat:'',nupco:'',sn:'',award:'',cost:'',price:'',mfr:'',desc:''}};renderOv()},
+ 'pit-edit'(el){const s=curSup(),it=s&&(s.items||[]).find(i=>i.id===el.dataset.id);if(!it)return;S.modal={kind:'pit',id:it.id,errs:{},d:{cat:it.cat||'',nupco:it.nupco||'',sn:it.sn||'',award:it.award||'',cost:it.cost,price:it.price==null?'':it.price,mfr:it.mfr||'',desc:it.desc||''}};renderOv()},
+ 'psup-new'(){S.modal={kind:'psup',id:null,errs:{},d:{code:'',name:'',country:'',currency:'USD'}};renderOv()},
+ 'psup-edit'(){const s=curSup();if(!s)return;S.modal={kind:'psup',id:s.id,errs:{},d:{code:s.code||'',name:s.name||'',country:s.country||'',currency:s.currency||'USD'}};renderOv()},
  'imp-tpl'(){impTemplate()},
  'imp-go'(){doImport()},
  doc(el){const r=S.reqs.find(x=>x.id===el.dataset.id);S.modal={kind:'doc',id:r.id,dl:S.lang,back:S.modal&&S.modal.kind==='detail'?S.modal:null};renderOv()},
@@ -1001,6 +1136,8 @@ function doVerify(){const q=S.vq.trim().toUpperCase();const r=S.reqs.find(x=>x.r
 document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f)f(el,ev)});
 document.addEventListener('change',ev=>{const t=ev.target;
  if(t.id==='impfile'){const f=t.files&&t.files[0];t.value='';importFile(f)}
+ else if(t.id==='pimp'){const f=t.files&&t.files[0];t.value='';purchImport(f)}
+ else if(t.id==='psel'){S.psel=t.value;S.pdone=false;render()}
  else if(t.id==='ft'){S.f.type=t.value;$('#list').innerHTML=list()}
  else if(t.id==='fs'){S.f.status=t.value;$('#list').innerHTML=list()}
  else if(t.closest('#nform')){readForm();if(t.name==='item'){S.modal.d.model=OPT.model[t.value][0];renderOv()}else if(t.name==='kind'){renderOv()}}});
@@ -1009,16 +1146,17 @@ document.addEventListener('input',ev=>{const t=ev.target;
  else if(t.id==='vq'){S.vq=t.value}
  else if(t.id==='note'){S.modal.note=t.value}
  else if(t.closest('#nform')){readForm();const lv=$('#live');if(lv){const h=liveBox(S.modal.type,S.modal.d);lv.innerHTML=h;lv.hidden=!h}}});
-document.addEventListener('submit',ev=>{ev.preventDefault();if(ev.target.id==='nform')submit();else if(ev.target.id==='eform')saveEmp();else if(ev.target.id==='sform')saveSettings();else if(ev.target.id==='vform'){S.vq=$('#vq').value;doVerify()}});
+document.addEventListener('submit',ev=>{ev.preventDefault();if(ev.target.id==='nform')submit();else if(ev.target.id==='eform')saveEmp();else if(ev.target.id==='sform')saveSettings();else if(ev.target.id==='pofform')savePof();else if(ev.target.id==='pitform')savePit();else if(ev.target.id==='psupform')savePsup();else if(ev.target.id==='payform'){const a=+pval('payform','amt'),dt=pval('payform','date'),nt=pval('payform','note');if(!(a>0)){toast(L('أدخل مبلغ الدفعة.','Enter the payment amount.'))}else poPatch(d=>{d.pays.push({amt:Math.round(a*100)/100,date:dt,note:nt})},L('أُضيفت الدفعة.','Payment added.'))}else if(ev.target.id==='vform'){S.vq=$('#vq').value;doVerify()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.modal)ACT.close()});
 window.addEventListener('resize',fit);
 
 /* ---------- boot ---------- */
 const th=store.get('uti.theme');if(th==='dark'||th==='light')document.documentElement.dataset.theme=th;
-function onUser(email,verified){S.reqs=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
+function onUser(email,verified){S.reqs=[];S.sups={};S.pos=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
  if(!email){S.user=null;S.auth='out';render();return false}
  S.user=email.toLowerCase();if(!S.user.endsWith('@'+DOMAIN)||!verified){S.auth='denied';render();return false}
  S.auth='in';S.loginErr=null;render();return true}
+const pslug=v=>String(v).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';
 function fbBE(){
  firebase.initializeApp(CFG.firebase);const auth=firebase.auth(),db=firebase.firestore();let unsubs=[],started=false,wasBoss=false;
  const E=db.collection('employees'),RQ=db.collection('requests'),SAL=db.collection('salaries'),CF=db.collection('config');
@@ -1029,9 +1167,10 @@ function fbBE(){
   const sub=(q,i)=>unsubs.push(q.onSnapshot(s=>{const mp=new Map();s.forEach(d=>mp.set(d.id,Object.assign({},d.data(),{id:d.id})));src[i]=mp;merge()},fail));
   if(isBoss(u))sub(RQ,0);else{sub(RQ.where('emp','==',u),0);sub(RQ.where('empMgr','==',u),1);sub(RQ.where('approvers','array-contains',u),2)}
   if(canSeeSal())unsubs.push(SAL.onSnapshot(s=>{const m={};s.forEach(d=>{m[d.id]=d.data().sal});S.sal=m;refresh()},fail));
-  else if(S.emps[u])unsubs.push(SAL.doc(u).onSnapshot(d=>{S.sal=d.exists?{[u]:d.data().sal}:{};refresh()},fail))}
+  else if(S.emps[u])unsubs.push(SAL.doc(u).onSnapshot(d=>{S.sal=d.exists?{[u]:d.data().sal}:{};refresh()},fail));
+  if(canPurch()){unsubs.push(db.collection('suppliers').onSnapshot(q=>{const m={};q.forEach(d=>{m[d.id]=Object.assign({},d.data(),{id:d.id})});S.sups=m;refresh()},fail));unsubs.push(db.collection('porders').onSnapshot(q=>{const a=[];q.forEach(d=>a.push(Object.assign({},d.data(),{id:d.id})));S.pos=a;refresh()},fail))}}
  function watch(){let gotE=false,gotR=false;
-  const go=()=>{if(!gotE||!gotR)return;S.ready=true;const b=isBoss(S.user)+'|'+canSeeSal();if(!started){started=true;wasBoss=b;if(S.emps[S.user]||isAdmin())watchData()}else if(b!==wasBoss){location.reload();return}refresh()};
+  const go=()=>{if(!gotE||!gotR)return;S.ready=true;const b=isBoss(S.user)+'|'+canSeeSal()+'|'+canPurch();if(!started){started=true;wasBoss=b;if(S.emps[S.user]||isAdmin())watchData()}else if(b!==wasBoss){location.reload();return}refresh()};
   unsubs.push(CF.doc('company').onSnapshot(d=>{CO=Object.assign({},CO_DEF,d.exists?d.data():{});if(S.ready)refresh()},fail));
   unsubs.push(CF.doc('routing').onSnapshot(d=>{R=Object.assign({hr:'',fin:'',ceo:''},d.exists?d.data():{});gotR=true;go()},fail));
   unsubs.push(E.onSnapshot(q=>{const m={};q.forEach(d=>{m[d.id]=Object.assign({},d.data(),{key:d.id})});S.emps=m;gotE=true;go()},fail))}
@@ -1044,6 +1183,9 @@ function fbBE(){
   updateRequest(id,p){return RQ.doc(id).update(p)},
   saveEmployee(key,data,sal){const b=db.batch();b.set(E.doc(key),data,{merge:true});if(sal===null)b.delete(SAL.doc(key));else if(sal!==undefined)b.set(SAL.doc(key),{sal});return b.commit()},
   async importEmployees(items){for(let i=0;i<items.length;i+=200){const b=db.batch();items.slice(i,i+200).forEach(x=>{b.set(E.doc(x.key),x.data,{merge:true});if(x.sal!==undefined)b.set(SAL.doc(x.key),{sal:x.sal})});await b.commit()}},
+  async savePurch(col,id,data){const ref=id?db.collection(col).doc(id):db.collection(col).doc();await ref.set(data);return ref.id},
+  delPurch(col,id){return db.collection(col).doc(id).delete()},
+  async importPurch(j){const sid=pslug(j.supplier.code),b=db.batch();b.set(db.collection('suppliers').doc(sid),Object.assign({createdAt:Date.now()},j.supplier));j.orders.forEach((o,i)=>{b.set(db.collection('porders').doc(sid+'_'+pslug(o.no||String(i+1))+'_'+(i+1)),Object.assign({pays:[],lines:[],createdAt:Date.now()},o,{sup:sid,seq:i+1}))});await b.commit();return sid},
   saveConfig(id,data){return CF.doc(id).set(data,{merge:true})}
  }}
 /* Local preview backend (only when UTI_CONFIG.mock is set): same screens, data kept in this browser. */
@@ -1053,6 +1195,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
  function sync(){const u=S.user;S.emps={};Object.keys(M.emps).forEach(k=>{S.emps[k]=Object.assign(cl(M.emps[k]),{key:k})});R=Object.assign({hr:'',fin:'',ceo:''},M.routing);CO=Object.assign({},CO_DEF,M.company);
   if(!S.emps[u]&&!isAdmin()){S.err='permission-denied';render();return}
   S.sal=canSeeSal()?cl(M.sal):(M.sal[u]!=null?{[u]:M.sal[u]}:{});
+  if(canPurch()){S.sups={};Object.keys(M.sups||{}).forEach(k=>{S.sups[k]=Object.assign(cl(M.sups[k]),{id:k})});S.pos=cl(M.pos||[])}else{S.sups={};S.pos=[]}
   S.reqs=cl(M.reqs).filter(r=>isBoss(u)||r.emp===u||r.empMgr===u||r.approvers.includes(u));S.ready=true;refresh()}
  const login=e=>{if(e)store.set(UK,e);else store.del(UK);if(onUser(e,true))sync()};
  return {mock:true,login,
@@ -1064,6 +1207,9 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
   async updateRequest(id,p){const r=M.reqs.find(x=>x.id===id);if(!r||r.pendingWith!==S.user)throw {code:'permission-denied'};Object.assign(r,cl(p));persist();sync()},
   async saveEmployee(key,data,sal){if(!canManage())throw {code:'permission-denied'};M.emps[key]=Object.assign({},M.emps[key],data);if(sal===null)delete M.sal[key];else if(sal!==undefined)M.sal[key]=sal;persist();sync()},
   async importEmployees(items){if(!canManage())throw {code:'permission-denied'};items.forEach(x=>{M.emps[x.key]=Object.assign({},M.emps[x.key],x.data);if(x.sal!==undefined)M.sal[x.key]=x.sal});persist();sync()},
+  async savePurch(col,id,data){if(!canPurch())throw {code:'permission-denied'};M.sups=M.sups||{};M.pos=M.pos||[];const nid=id||'p'+now().toString(36)+Math.round(Math.random()*999);if(col==='suppliers')M.sups[nid]=cl(data);else{const i=M.pos.findIndex(o=>o.id===nid),d=Object.assign(cl(data),{id:nid});if(i>=0)M.pos[i]=d;else M.pos.push(d)}persist();sync();return nid},
+  async delPurch(col,id){if(!isAdmin())throw {code:'permission-denied'};M.pos=(M.pos||[]).filter(o=>o.id!==id);persist();sync()},
+  async importPurch(j){if(!canPurch())throw {code:'permission-denied'};M.sups=M.sups||{};M.pos=M.pos||[];const sid=pslug(j.supplier.code);M.sups[sid]=cl(j.supplier);M.pos=M.pos.filter(o=>o.sup!==sid);j.orders.forEach((o,i)=>{M.pos.push(Object.assign({pays:[],lines:[]},cl(o),{id:sid+'_'+(i+1),sup:sid,seq:i+1}))});persist();sync();return sid},
   async saveConfig(id,data){if(!isAdmin())throw {code:'permission-denied'};M[id]=Object.assign({},M[id],data);persist();sync()}
  }}
 let BE;
