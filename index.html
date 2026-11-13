@@ -429,6 +429,16 @@ details.more>div button:hover,details.more>div label:hover{background:var(--surf
 details.phelp{flex:1;min-width:240px;font-size:13px;color:var(--ink-2)}
 details.phelp summary{cursor:pointer;font-weight:600;color:var(--brand-ink)}
 details.phelp ol{margin:8px 0 0;padding-inline-start:20px;display:flex;flex-direction:column;gap:3px;max-width:75ch}
+/* e-approval + company stamp */
+.eap{color:#1d3a6e;font-weight:600;font-size:11px;white-space:nowrap}
+.eap.no{color:#B93A2B}
+.eap .ltr{font-weight:500}
+.paper.dense .eap{font-size:10px}
+.lt-sign .eap{display:inline-block;font-size:12px;line-height:1.7;margin:7px 0;padding:3px 14px;border:1px solid rgba(29,58,110,.4);border-radius:6px;white-space:normal}
+.dc-seal img.co,.lt-sign img.co{transform:none;object-fit:contain}
+.lt-sign img.co{width:132px;height:132px}
+.stampset{display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.stampset img{width:120px;height:120px;object-fit:contain;background:#fff;border:1px solid var(--line,#d5ddd8);border-radius:10px;padding:8px}
 </style>
 </head>
 <body>
@@ -876,7 +886,33 @@ function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().sort((a,b)=
   <div class="chart"><h3>${L('بيانات الشركة في ترويسة المستندات','Company details on form headers')}</h3>
    <div class="grid2">${f('ar',L('اسم الشركة بالعربي','Company name in Arabic'),CO.ar)}${f('en',L('اسم الشركة بالإنجليزي','Company name in English'),CO.en,'dir="ltr"')}${f('unitAr',L('الإدارة بالعربي','Department line in Arabic'),CO.unitAr)}${f('unitEn',L('الإدارة بالإنجليزي','Department line in English'),CO.unitEn,'dir="ltr"')}${f('addrAr',L('العنوان بالعربي','Address in Arabic'),CO.addrAr)}${f('addrEn',L('العنوان بالإنجليزي','Address in English'),CO.addrEn,'dir="ltr"')}</div></div>
   <div><button type="submit" class="btn pri">${L('حفظ الإعدادات','Save settings')}</button></div>
+  <div class="chart"><h3>${L('ختم الشركة','Company stamp')}</h3><p class="note">${L('يظهر على النماذج والخطابات بعد الاعتماد النهائي فقط. يُحفظ داخل قاعدة البيانات ولا يظهر إلا للموظفين بعد تسجيل الدخول. ارفع صورة واضحة بخلفية بيضاء، والنظام يزيل الخلفية.','Shown on forms and letters only after final approval. It is kept in the database and visible only to signed-in employees. Upload a clear image on a white background; the background is removed for you.')}</p>
+   <div class="stampset">${CO.stamp?`<img src="${CO.stamp}" alt="${L('ختم الشركة','Company stamp')}">`:`<div class="dc-ph">${L('لا يوجد ختم','No stamp')}</div>`}<div><label class="btn" for="s-stamp">${CO.stamp?L('استبدال الصورة','Replace image'):L('رفع صورة الختم','Upload stamp image')}</label><input type="file" id="s-stamp" accept="image/png,image/jpeg,image/webp" hidden>${CO.stamp?` <button type="button" class="btn" data-act="stamp-del">${L('إزالة الختم','Remove stamp')}</button>`:''}</div></div></div>
  </form>`}
+async function setStamp(file){if(!file)return;
+ try{const url=URL.createObjectURL(file),im=new Image();await new Promise((ok,no)=>{im.onload=ok;im.onerror=no;im.src=url});URL.revokeObjectURL(url);
+  const k=Math.min(1,520/Math.max(im.naturalWidth,im.naturalHeight)),w=Math.max(1,Math.round(im.naturalWidth*k)),h=Math.max(1,Math.round(im.naturalHeight*k));
+  const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);
+  const id=x.getImageData(0,0,w,h),p=id.data;let x0=w,y0=h,x1=-1,y1=-1;
+  for(let i=0;i<p.length;i+=4){const m=Math.min(p[i],p[i+1],p[i+2]);let a=255-m;if(a<22)a=0;
+   if(a){p[i]=Math.round((p[i]-m)/a*255);p[i+1]=Math.round((p[i+1]-m)/a*255);p[i+2]=Math.round((p[i+2]-m)/a*255);const q=i/4,px=q%w,py=(q-px)/w;if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py}
+   p[i+3]=a}
+  if(x1<0){toast(L('الصورة فارغة أو بيضاء بالكامل.','The image is blank.'));return}
+  /* peel a screenshot frame: outer rows/columns that are almost a full line */
+  const al=(px,py)=>p[(py*w+px)*4+3],rowC=y=>{let n=0;for(let i=x0;i<=x1;i++)if(al(i,y))n++;return n/(x1-x0+1)},colC=q=>{let n=0;for(let j=y0;j<=y1;j++)if(al(q,j))n++;return n/(y1-y0+1)};
+  const clrR=y=>{for(let i=0;i<w;i++)p[(y*w+i)*4+3]=0},clrC=q=>{for(let j=0;j<h;j++)p[(j*w+q)*4+3]=0};
+  const edge=(cov,th)=>{for(let k=0;k<6;k++)if(cov(k)>th)return k;return -1},big=()=>x1-x0>30&&y1-y0>30;
+  for(let g=0;g<6&&big();g++){let ch=0,k;
+   if((k=edge(k=>rowC(y0+k),.6))>=0){for(let j=0;j<k+3;j++)clrR(y0++);ch=1}
+   if((k=edge(k=>rowC(y1-k),.6))>=0){for(let j=0;j<k+3;j++)clrR(y1--);ch=1}
+   if((k=edge(k=>colC(x0+k),.3))>=0){for(let j=0;j<k+3;j++)clrC(x0++);ch=1}
+   if((k=edge(k=>colC(x1-k),.3))>=0){for(let j=0;j<k+3;j++)clrC(x1--);ch=1}
+   if(!ch)break}
+  while(big()&&rowC(y0)===0)y0++;while(big()&&rowC(y1)===0)y1--;while(big()&&colC(x0)===0)x0++;while(big()&&colC(x1)===0)x1--;
+  x.putImageData(id,0,0);const o=document.createElement('canvas');o.width=x1-x0+1;o.height=y1-y0+1;o.getContext('2d').drawImage(c,x0,y0,o.width,o.height,0,0,o.width,o.height);
+  const data=o.toDataURL('image/png');if(data.length>600000){toast(L('الصورة كبيرة. جرّب صورة أصغر.','The image is too large. Try a smaller one.'));return}
+  await BE.saveConfig('company',{stamp:data});Object.keys(lvlCache).forEach(k=>delete lvlCache[k]);toast(L('حُفظ الختم، وسيظهر على المستندات المعتمدة.','Stamp saved. It will appear on approved documents.'))}
+ catch(e){console.error(e);toast(e&&e.code?saveErr(e):L('تعذّر قراءة الصورة.','Could not read the image.'))}}
 async function saveSettings(){const f=$('#sform'),v=n=>f.elements[n].value.trim();
  try{await BE.saveConfig('routing',{hr:v('hr'),fin:v('fin'),ceo:v('ceo')});await BE.saveConfig('company',{ar:v('ar')||CO_DEF.ar,en:v('en')||CO_DEF.en,unitAr:v('unitAr'),unitEn:v('unitEn'),addrAr:v('addrAr'),addrEn:v('addrEn')});toast(L('حُفظت الإعدادات.','Settings saved.'))}catch(x){console.error(x);toast(saveErr(x))}}
 async function backup(){const data={exportedAt:new Date().toISOString(),company:CO,routing:R,employees:S.emps,salaries:S.sal,requests:S.reqs};if(canPurch()){data.suppliers=S.sups;data.purchaseOrders=S.pos}
@@ -885,7 +921,7 @@ async function backup(){const data={exportedAt:new Date().toISOString(),company:
 
 /* ---------- official documents ---------- */
 const stampCache={};
-function stampURL(r){const key=r.ref+r.closedAt;if(stampCache[key])return stampCache[key];
+function stampURL(r){if(CO.stamp)return CO.stamp;const key=r.ref+r.closedAt;if(stampCache[key])return stampCache[key];
  const c=document.createElement('canvas');c.width=c.height=360;const x=c.getContext('2d');x.translate(180,180);x.globalAlpha=.9;const ink='#2F6B55';x.strokeStyle=ink;x.fillStyle=ink;
  [[172,6],[161,1.6],[106,1.6]].forEach(a=>{x.beginPath();x.lineWidth=a[1];x.arc(0,0,a[0],0,Math.PI*2);x.stroke()});
  x.textAlign='center';x.textBaseline='middle';
@@ -912,15 +948,16 @@ function docHTML(r,dl,lvl){
  let body='',docDate=r.at;
  /* approvals table */
  let dead=false;
- const aRows=[`<tr><td>${D('مقدّم الطلب','Requester')}</td><td>${esc(nm(e,dl))}</td><td class="c"><span class="ok-t">${D('قُدِّم','Submitted')}</span></td><td class="c"><span class="ltr">${fS(r.at)} ${fT(r.at)}</span></td><td class="c"><span class="sig">${esc(e.ar)}</span></td></tr>`]
- .concat(r.stages.map(s=>{const a=emp(s.by);let dec,at='',sg='';if(s.decision==='approved'){dec=`<span class="ok-t">${D('معتمد','Approved')}</span>`;at=`<span class="ltr">${fS(s.at)} ${fT(s.at)}</span>`;sg=`<span class="sig">${esc(a.ar)}</span>`}else if(s.decision==='rejected'){dec=`<span class="no-t">${D('مرفوض','Rejected')}</span>`;at=`<span class="ltr">${fS(s.at)} ${fT(s.at)}</span>`;sg=`<span class="sig">${esc(a.ar)}</span>`;dead=true}else dec=`<span class="wt-t">${dead?'—':D('بانتظار الاعتماد','Pending')}</span>`;
-  return `<tr><td>${o2(STAGE[s.key],dl)}</td><td>${esc(nm(a,dl))}</td><td class="c">${dec}</td><td class="c">${at}</td><td class="c">${sg}</td></tr>`}));
- const appr=sec(D('الاعتمادات','Approvals'),`<table class="dc-t dc-appr"><colgroup><col style="width:20%"><col style="width:25%"><col style="width:16%"><col style="width:19%"><col style="width:20%"></colgroup><thead><tr><th>${D('المرحلة','Stage')}</th><th>${D('الاسم','Name')}</th><th class="c">${D('القرار','Decision')}</th><th class="c">${D('التاريخ','Date')}</th><th class="c">${D('التوقيع','Signature')}</th></tr></thead><tbody>${aRows.join('')}</tbody></table>`);
+ const eap=(ar,en,ts)=>`<span class="eap">${D(ar,en)} <span class="ltr">${fS(ts)}</span> ${D('الساعة','at')} <span class="ltr">${fT(ts)}</span></span>`;
+ const aRows=[`<tr><td>${D('مقدّم الطلب','Requester')}</td><td>${esc(nm(e,dl))}</td><td class="c"><span class="ok-t">${D('قُدِّم','Submitted')}</span></td><td class="c">${eap('قُدِّم إلكترونياً','Submitted electronically',r.at)}</td></tr>`]
+ .concat(r.stages.map(s=>{const a=emp(s.by);let dec,sg='';if(s.decision==='approved'){dec=`<span class="ok-t">${D('معتمد','Approved')}</span>`;sg=eap('تمت الموافقة إلكترونياً','Approved electronically',s.at)}else if(s.decision==='rejected'){dec=`<span class="no-t">${D('مرفوض','Rejected')}</span>`;sg=eap('رُفض إلكترونياً','Rejected electronically',s.at).replace('class="eap"','class="eap no"');dead=true}else dec=`<span class="wt-t">${dead?'—':D('بانتظار الاعتماد','Pending')}</span>`;
+  return `<tr><td>${o2(STAGE[s.key],dl)}</td><td>${esc(nm(a,dl))}</td><td class="c">${dec}</td><td class="c">${sg}</td></tr>`}));
+ const appr=sec(D('الاعتمادات','Approvals'),`<table class="dc-t dc-appr"><colgroup><col style="width:19%"><col style="width:25%"><col style="width:14%"><col style="width:42%"></colgroup><thead><tr><th>${D('المرحلة','Stage')}</th><th>${D('الاسم','Name')}</th><th class="c">${D('القرار','Decision')}</th><th class="c">${D('الاعتماد الإلكتروني (التاريخ والوقت)','Electronic approval (date and time)')}</th></tr></thead><tbody>${aRows.join('')}</tbody></table>`);
  const rej=r.stages.find(s=>s.decision==='rejected');
  const sealTxt=r.status==='approved'?D(`اعتُمد هذا الطلب نهائياً بتاريخ ${both(r.closedAt)}، وأصبح نافذاً من تاريخه.`,`This request received final approval on ${g(r.closedAt)} (${h(r.closedAt)}) and is effective from that date.`)
   :rej?`<b>${D('سبب الرفض','Reason for rejection')}:</b> ${esc(rej.note)} <br>(${nm(emp(rej.by),dl)}، ${o2(STAGE[rej.key],dl)})`
   :D(`هذا المستند غير نافذ إلى حين اكتمال جميع الاعتمادات. المرحلة الحالية: ${o2(STAGE[c.key],dl)} (${nm(emp(c.by),dl)}).`,`This document is not effective until all approvals are complete. Current stage: ${o2(STAGE[c.key],dl)} (${nm(emp(c.by),dl)}).`);
- const sealImg=r.status==='approved'?`<img src="${stampURL(r)}" alt="${D('ختم معتمد','Approved stamp')}">`:`<div class="dc-ph">${rej?D('غير معتمد','Not approved'):D('موضع الختم','Stamp here')}</div>`;
+ const sealImg=r.status==='approved'?`<img${CO.stamp?' class="co"':''} src="${stampURL(r)}" alt="${CO.stamp?D('ختم الشركة','Company stamp'):D('ختم معتمد','Approved stamp')}">`:`<div class="dc-ph">${rej?D('غير معتمد','Not approved'):D('موضع الختم','Stamp here')}</div>`;
  const seal=`<div class="dc-seal"><p>${sealTxt}</p>${sealImg}</div>`;
 
  if(r.type==='leave'){const n=lDays(d),b=r.snap!=null?r.snap:balance(r.emp),ann=d.kind==='annual';
@@ -960,8 +997,8 @@ function docHTML(r,dl,lvl){
    <div style="font-size:12.5px;line-height:1.65">${kv([[D('الاسم','Name'),esc(nm(e,dl))],[D('الرقم الوظيفي','Employee no.'),`<span class="ltr">${esc(e.no)}</span>`],[D('القسم','Department'),esc(dpt(e,dl))],[D('المسمى الوظيفي','Job title'),esc(ttl(e,dl))],[D('تاريخ التعيين','Date of joining'),g(hd)],d.salary?[D('الراتب الشهري','Monthly salary'),`<span class="ltr">${fN(d.salAmt||0)}</span> ${D('ريال سعودي','SAR')}`]:[D('الحالة الوظيفية','Status'),D('على رأس العمل','In active service')]])}</div>
    <p>${p2t}</p>
    <div>${A?'وتقبلوا وافر التحية والتقدير،':'Yours faithfully,'}</div>
-   <div class="lt-sign">${signed?`<img src="${stampURL(r)}" alt="">`:`<div class="dc-ph">${rej?D('غير معتمد','Not approved'):D('موضع الختم','Stamp here')}</div>`}
-    <div class="blk"><b>${ttl(a,dl)}</b>${signed?`<span class="sig">${esc(a.ar)}</span>`:`<div style="height:46px;font-size:11px;color:#8a9a92;padding-top:14px">${rej?D('رُفض الطلب: ','Rejected: ')+esc(rej.note):D('بانتظار التوقيع','Awaiting signature')}</div>`}<b>${nm(a,dl)}</b></div></div>
+   <div class="lt-sign">${signed?`<img${CO.stamp?' class="co"':''} src="${stampURL(r)}" alt="">`:`<div class="dc-ph">${rej?D('غير معتمد','Not approved'):D('موضع الختم','Stamp here')}</div>`}
+    <div class="blk"><b>${ttl(a,dl)}</b>${signed?`<span class="eap">${D('تمت الموافقة إلكترونياً','Approved electronically')}<br><span class="ltr">${fS(r.closedAt)}</span> ${D('الساعة','at')} <span class="ltr">${fT(r.closedAt)}</span></span>`:`<div style="height:46px;font-size:11px;color:#8a9a92;padding-top:14px">${rej?D('رُفض الطلب: ','Rejected: ')+esc(rej.note):D('بانتظار الاعتماد','Awaiting approval')}</div>`}<b>${nm(a,dl)}</b></div></div>
   </div>`}
  else main=`<div class="dc-main">${body}${appr}${seal}</div>`;
  const wm=r.status==='approved'?'':`<div class="dc-wm${rej?' rej':''}${A?'':' en'}">${rej?D('مرفوض','REJECTED'):D('قيد الاعتماد','PENDING APPROVAL')}</div>`;
@@ -972,7 +1009,7 @@ function docHTML(r,dl,lvl){
   <div class="dc-meta"><span><b>${D('الرقم المرجعي','Reference')}:</b> <span class="num">${r.ref}</span></span><span><b>${D('التاريخ','Date')}:</b> ${g(docDate)} &nbsp;|&nbsp; ${h(docDate)}</span></div>
   <div class="dc-title"><h2>${A?t.dAr:t.dEn}</h2><span ${A?'':'style="letter-spacing:0;font-size:12px"'}>${A?t.dEn.toUpperCase():t.dAr}</span></div>
   ${main}
-  <div class="dc-foot">${qr?`<img src="${qr}" alt="QR ${r.ref}">`:`<div class="qrph">${r.ref}</div>`}<div><div><b>${D('مستند صادر إلكترونياً','Electronically issued document')}</b> ${D('من نظام الطلبات الداخلية، ولا يحتاج إلى توقيع يدوي.','from the Internal Requests system. No handwritten signature is needed.')}</div><div>${D('للتحقق امسح الرمز أو أدخل الرقم المرجعي','To verify, scan the code or enter reference')} <span class="num">${r.ref}</span> ${D('في صفحة «التحقق من مستند».','on the “Verify a document” page.')}</div></div><span class="pg">${D('صفحة 1 من 1','Page 1 of 1')}</span></div>
+  <div class="dc-foot">${qr?`<img src="${qr}" alt="QR ${r.ref}">`:`<div class="qrph">${r.ref}</div>`}<div><div><b>${D('مستند صادر إلكترونياً','Electronically issued document')}</b> ${D('من نظام الطلبات الداخلية. الموافقات مسجّلة باسم صاحبها وتاريخها ووقتها (توقيت الرياض)، ولا يحتاج إلى توقيع يدوي.','from the Internal Requests system. Each approval is recorded with its approver, date and time (Riyadh time). No handwritten signature is needed.')}</div><div>${D('للتحقق امسح الرمز أو أدخل الرقم المرجعي','To verify, scan the code or enter reference')} <span class="num">${r.ref}</span> ${D('في صفحة «التحقق من مستند».','on the “Verify a document” page.')}</div></div><span class="pg">${D('صفحة 1 من 1','Page 1 of 1')}</span></div>
  </div>`}
 const lvlCache={};
 function docFit(r,dl){const key=[r.ref,dl,r.status,r.stages.filter(s=>s.decision).length].join('|');if(key in lvlCache)return docHTML(r,dl,lvlCache[key]);
@@ -1197,6 +1234,7 @@ const ACT={
   try{await decide(r,false,n);S.modal={kind:'detail',id:r.id};toast(L('رُفض الطلب وسُجّل السبب.','Rejected, and the reason was recorded.'))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()},
  signin(){S.loginErr=null;render();Promise.resolve().then(()=>BE.signIn()).catch(e=>{const c=e&&e.code;S.loginErr=c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'?null:c==='auth/popup-blocked'?L('المتصفح منع نافذة الدخول. اسمح بالنوافذ المنبثقة لهذا الموقع ثم حاول.','The browser blocked the sign-in window. Allow pop-ups for this site and try again.'):c==='auth/unauthorized-domain'?L('عنوان هذا الموقع غير مضاف في إعدادات الدخول. راجع مدير النظام.','This site address is not authorised for sign-in. Contact the system admin.'):L('تعذّر تسجيل الدخول. حاول مرة أخرى.','Sign-in failed. Try again.');console.error(e);render()})},
  signout(){S.modal=null;BE.signOut()},
+ 'stamp-del'(){BE.saveConfig('company',{stamp:''}).then(()=>toast(L('أُزيل الختم.','Stamp removed.'))).catch(e=>toast(saveErr(e)))},
  'emp-new'(){S.modal={kind:'emp',key:null,d:blankEmp(),errs:{},sal0:null};renderOv()},
  'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||iso(now()),g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
  backup(){backup()},
@@ -1231,7 +1269,8 @@ const ACT={
 function doVerify(){const q=S.vq.trim().toUpperCase();const r=S.reqs.find(x=>x.ref===q);S.vres=q?(r?r.id:null):undefined;render()}
 document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f)f(el,ev)});
 document.addEventListener('change',ev=>{const t=ev.target;
- if(t.id==='impfile'){const f=t.files&&t.files[0];t.value='';importFile(f)}
+ if(t.id==='s-stamp'){const f=t.files&&t.files[0];t.value='';setStamp(f)}
+ else if(t.id==='impfile'){const f=t.files&&t.files[0];t.value='';importFile(f)}
  else if(t.id==='pimp'){const f=t.files&&t.files[0];t.value='';purchImport(f)}
  else if(t.id==='pxls'){const f=t.files&&t.files[0];t.value='';purchXlsxImport(f)}
  else if(t.id==='psel'){S.psel=t.value;S.pdone=false;render()}
