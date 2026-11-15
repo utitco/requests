@@ -450,6 +450,23 @@ body:has(.asbar){padding-bottom:64px}
 body:has(.asbar) .ov{bottom:46px}
 body:has(.asbar) #toast{bottom:64px}
 .dc-hint{font-size:10px;color:#6b7c74;margin-top:3px}
+/* official letterhead */
+.dc-head.lh{grid-template-columns:1fr 96px 1fr;align-items:end}
+.dc-head.lh b{font-size:19px;line-height:1.25;color:#5f6b3a}
+.dc-head.lh .en b{font-family:Georgia,'Times New Roman',serif;font-weight:700;letter-spacing:.3em;font-size:18px}
+.dc-head.lh .ar b{font-size:22px;font-weight:700}
+.dc-head.lh .s2{font-size:12.5px;color:#5f6b3a;font-weight:500;line-height:1.5}
+.dc-head.lh .ids{font-size:9.5px;color:#3b4640;letter-spacing:.02em;margin-top:2px}
+.dc-head.lh img{height:78px}
+.paper.dense .dc-head.lh img{height:66px}
+.paper.dense .dc-head.lh b{font-size:17px}.paper.dense .dc-head.lh .ar b{font-size:19px}
+.dc-lh{display:grid;grid-template-columns:1fr 1fr;gap:14px;direction:ltr;border-top:1.5px solid #E2704F;margin-top:6px;padding-top:4px;font-size:8px;line-height:1.5;color:#3b4640}
+.dc-lh .en{text-align:left;direction:ltr}.dc-lh .ar{text-align:right;direction:rtl}
+.dc-lh span{display:block;white-space:nowrap}
+.dc-lh em{display:block;font-style:normal;color:#C4572F;font-weight:600}
+.dc-lh .en em{text-align:right}.dc-lh .ar em{text-align:left;direction:ltr}
+.paper.dense .dc-lh{font-size:7.5px;margin-top:4px;padding-top:3px}
+.dc-head.lh .ids span{display:inline}
 </style>
 </head>
 <body>
@@ -485,7 +502,11 @@ const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},se
 /* ---------- configuration + directory ---------- */
 const CFG=window.UTI_CONFIG||{};
 const DOMAIN=(CFG.domain||'utit.com.sa').toLowerCase();
-const CO_DEF={ar:'شركة UTiTCo',en:'UTiTCo Company',unitAr:'إدارة الموارد البشرية والشؤون الإدارية',unitEn:'Human Resources & Administration',addrAr:'الرياض، المملكة العربية السعودية',addrEn:'Riyadh, Kingdom of Saudi Arabia'};
+const CO_DEF={n1Ar:'الشركة العالمية',n2Ar:'للتجارة والتقنية المعلوماتية',n1En:'UNIVERSAL',n2En:'for Trading & Information Technology Co.',vat:'300046411900003',cr:'1010215806',
+ f1Ar:'الرياض - الروضة - شارع الشيخ محمد التركي - هاتف: 0114451010 - فاكس: 0114090196',f2Ar:'القسم الطبي: 0531331573 - قسم تقنية المعلومات: 0556007960',f3Ar:'فرع جدة: 0122681118 - فرع الخبر: 054954111',
+ f1En:'Riyadh - Rawdah - Sheikh Mohammad Al-Turki Str. - Tel: 011 445 1010 - Fax: 011 4090196',f2En:'Medical Dept.: 0531331573 - Information Technology Dept.: 0556007960',f3En:'Jeddah Branch: 0122681118 - Khobar Branch: 054954111',web:'www.utit.com.sa',mail:'info@utit.com.sa'};
+const LHK=Object.keys(CO_DEF);
+const coFull=l=>l==='ar'?(CO.n1Ar+' '+CO.n2Ar).trim():((/^[A-Z ]+$/.test(CO.n1En)?CO.n1En.charAt(0)+CO.n1En.slice(1).toLowerCase():CO.n1En)+' '+CO.n2En).trim();
 let CO=Object.assign({},CO_DEF);
 let R={hr:'',fin:'',ceo:''};
 const ghost=k=>({key:k,no:'—',ar:k||'—',en:k||'—',g:'m',deptAr:'—',deptEn:'—',tAr:'—',tEn:'—',hire:'2000-01-01',used:0,mgr:'',active:false});
@@ -902,12 +923,14 @@ async function saveEmp(){readEmp();const m=S.modal,d=m.d,e={},req=L('هذا ال
  try{await BE.saveEmployee(key,data,sal);S.modal=null;toast(L('حُفظت بيانات الموظف.','Employee saved.'))}catch(x){m.busy=false;console.error(x);toast(saveErr(x))}
  render()}
 function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)+' — '+ttl(e)])).map(o=>`<option value="${esc(o[0])}"${o[0]===v?' selected':''}>${esc(o[1])}</option>`).join('');
- const f=(n,label,v,ex)=>`<div class="f"><label for="s-${n}">${label}</label><input type="text" id="s-${n}" name="${n}" value="${esc(v)}" maxlength="90" ${ex||''}></div>`;
+ const f=(n,label,v,ex)=>`<div class="f"><label for="s-${n}">${label}</label><input type="text" id="s-${n}" name="${n}" value="${esc(v)}" maxlength="110" ${ex||''}></div>`;
  return `<form id="sform" class="settings" novalidate>
   <div class="chart"><h3>${L('المعتمدون','Approvers')}</h3><p class="note">${L('من يعتمد مرحلة الموارد البشرية والمالية في كل الطلبات، ومن يعتمد طلبات المدراء أنفسهم. المدير المباشر يُحدَّد لكل موظف من بياناته.','Who approves the HR and Finance stages of every request, and who approves the managers’ own requests. The line manager is set on each employee.')}</p>
    <div class="grid2"><div class="f"><label for="s-hr">${L('معتمد الموارد البشرية','HR approver')}</label><select id="s-hr" name="hr">${opts(R.hr)}</select></div><div class="f"><label for="s-fin">${L('معتمد المالية','Finance approver')}</label><select id="s-fin" name="fin">${opts(R.fin)}</select></div><div class="f"><label for="s-ceo">${L('الإدارة العليا','Executive approver')}</label><select id="s-ceo" name="ceo">${opts(R.ceo)}</select></div></div></div>
   <div class="chart"><h3>${L('بيانات الشركة في ترويسة المستندات','Company details on form headers')}</h3>
-   <div class="grid2">${f('ar',L('اسم الشركة بالعربي','Company name in Arabic'),CO.ar)}${f('en',L('اسم الشركة بالإنجليزي','Company name in English'),CO.en,'dir="ltr"')}${f('unitAr',L('الإدارة بالعربي','Department line in Arabic'),CO.unitAr)}${f('unitEn',L('الإدارة بالإنجليزي','Department line in English'),CO.unitEn,'dir="ltr"')}${f('addrAr',L('العنوان بالعربي','Address in Arabic'),CO.addrAr)}${f('addrEn',L('العنوان بالإنجليزي','Address in English'),CO.addrEn,'dir="ltr"')}</div></div>
+   <p class="note">${L('مأخوذة من الورقة الرسمية للشركة، وتظهر في أعلى وأسفل كل نموذج وخطاب.','Taken from the company letterhead. Shown at the top and bottom of every form and letter.')}</p>
+   <div class="grid2">${f('n1Ar',L('اسم الشركة بالعربي (السطر الأول)','Company name in Arabic (line 1)'),CO.n1Ar)}${f('n1En',L('اسم الشركة بالإنجليزي (السطر الأول)','Company name in English (line 1)'),CO.n1En,'dir="ltr"')}${f('n2Ar',L('تكملة الاسم بالعربي','Arabic name, line 2'),CO.n2Ar)}${f('n2En',L('تكملة الاسم بالإنجليزي','English name, line 2'),CO.n2En,'dir="ltr"')}${f('vat',L('الرقم الضريبي','VAT number'),CO.vat,'dir="ltr" inputmode="numeric"')}${f('cr',L('السجل التجاري','Commercial registration'),CO.cr,'dir="ltr" inputmode="numeric"')}
+   ${f('f1Ar',L('التذييل بالعربي: السطر 1','Footer in Arabic: line 1'),CO.f1Ar)}${f('f1En',L('التذييل بالإنجليزي: السطر 1','Footer in English: line 1'),CO.f1En,'dir="ltr"')}${f('f2Ar',L('السطر 2','Line 2'),CO.f2Ar)}${f('f2En',L('السطر 2','Line 2'),CO.f2En,'dir="ltr"')}${f('f3Ar',L('السطر 3','Line 3'),CO.f3Ar)}${f('f3En',L('السطر 3','Line 3'),CO.f3En,'dir="ltr"')}${f('web',L('الموقع','Website'),CO.web,'dir="ltr"')}${f('mail',L('البريد','Email'),CO.mail,'dir="ltr"')}</div></div>
   <div><button type="submit" class="btn pri">${L('حفظ الإعدادات','Save settings')}</button></div>
   <div class="chart"><h3>${L('ختم الشركة','Company stamp')}</h3><p class="note">${L('يظهر على النماذج والخطابات بعد الاعتماد النهائي فقط. يُحفظ داخل قاعدة البيانات ولا يظهر إلا للموظفين بعد تسجيل الدخول. ارفع صورة واضحة بخلفية بيضاء، والنظام يزيل الخلفية.','Shown on forms and letters only after final approval. It is kept in the database and visible only to signed-in employees. Upload a clear image on a white background; the background is removed for you.')}</p>
    <div class="stampset">${CO.stamp?`<img src="${CO.stamp}" alt="${L('ختم الشركة','Company stamp')}">`:`<div class="dc-ph">${L('لا يوجد ختم','No stamp')}</div>`}<div><label class="btn" for="s-stamp">${CO.stamp?L('استبدال الصورة','Replace image'):L('رفع صورة الختم','Upload stamp image')}</label><input type="file" id="s-stamp" accept="image/png,image/jpeg,image/webp" hidden>${CO.stamp?` <button type="button" class="btn" data-act="stamp-del">${L('إزالة الختم','Remove stamp')}</button>`:''}</div></div></div>
@@ -937,7 +960,7 @@ async function setStamp(file){if(!file)return;
   await BE.saveConfig('company',{stamp:data});Object.keys(lvlCache).forEach(k=>delete lvlCache[k]);toast(L('حُفظ الختم، وسيظهر على المستندات المعتمدة.','Stamp saved. It will appear on approved documents.'))}
  catch(e){console.error(e);toast(e&&e.code?saveErr(e):L('تعذّر قراءة الصورة.','Could not read the image.'))}}
 async function saveSettings(){const f=$('#sform'),v=n=>f.elements[n].value.trim();
- try{await BE.saveConfig('routing',{hr:v('hr'),fin:v('fin'),ceo:v('ceo')});await BE.saveConfig('company',{ar:v('ar')||CO_DEF.ar,en:v('en')||CO_DEF.en,unitAr:v('unitAr'),unitEn:v('unitEn'),addrAr:v('addrAr'),addrEn:v('addrEn')});toast(L('حُفظت الإعدادات.','Settings saved.'))}catch(x){console.error(x);toast(saveErr(x))}}
+ try{await BE.saveConfig('routing',{hr:v('hr'),fin:v('fin'),ceo:v('ceo')});const co={};LHK.forEach(k=>{co[k]=v(k)});co.n1Ar=co.n1Ar||CO_DEF.n1Ar;co.n1En=co.n1En||CO_DEF.n1En;await BE.saveConfig('company',co);Object.keys(lvlCache).forEach(k=>delete lvlCache[k]);toast(L('حُفظت الإعدادات.','Settings saved.'))}catch(x){console.error(x);toast(saveErr(x))}}
 async function backup(){const data={exportedAt:new Date().toISOString(),company:CO,routing:R,employees:S.emps,salaries:S.sal,requests:S.reqs};if(canPurch()){data.suppliers=S.sups;data.purchaseOrders=S.pos}
  try{await saveFile('utitco-backup-'+iso(now())+'.json',new Blob([JSON.stringify(data,null,1)],{type:'application/json'}));toast(L('نُزّلت النسخة الاحتياطية. احفظها في مكان آمن.','Backup downloaded. Keep it somewhere safe.'))}catch(x){toast(L('تعذّر تنزيل النسخة الاحتياطية.','Could not download the backup.'))}}
 
@@ -1009,8 +1032,8 @@ function docHTML(r,dl,lvl){
    <div class="dc-fill" style="grid-template-columns:2fr 1fr;margin-top:10px"><span>${D('إقرار مقدّم الطلب باستلام العمل','Requester sign-off on completion')}</span><span>${D('التاريخ','Date')}</span></div>`)}
  let main;
  if(r.type==='letter'){const F=e.g==='f',st=r.stages[0],a=emp(st.by),to=esc(d.to),hd=d2ts(e.hire);docDate=r.closedAt||r.at;
-  const p1=A?`تشهد ${CO.ar} بأن ${F?'السيدة':'السيد'}/ <b>${esc(e.ar)}</b>، ${F?'صاحبة':'صاحب'} الرقم الوظيفي (<span class="num">${esc(e.no)}</span>)، ${F?'تعمل':'يعمل'} لدينا بوظيفة «${esc(e.tAr)}» في إدارة ${esc(dpt(e,'ar'))} منذ تاريخ ${g(hd)} الموافق ${h(hd)}، ${F?'وما زالت':'وما زال'} على رأس العمل حتى تاريخ إصدار هذه الشهادة${d.salary?`، ${F?'وتتقاضى':'ويتقاضى'} راتباً شهرياً إجمالياً قدره (<span class="num">${fN(d.salAmt||0)}</span>) ريال سعودي، ${tafqeet(d.salAmt||0)}`:''}.`
-   :`This is to certify that ${F?'Ms.':'Mr.'} <b>${esc(e.en)}</b> (Employee No. ${esc(e.no)}) has been employed by ${CO.en} as ${esc(e.tEn)} in the ${esc(dpt(e,'en'))} Department since ${g(hd)} (${h(hd)}), and that ${F?'she':'he'} remains in active service as of the date of this certificate.${d.salary?` ${F?'Her':'His'} gross monthly salary is SAR ${fN(d.salAmt||0)} (${enAmt(d.salAmt||0)}).`:''}`;
+  const p1=A?`تشهد ${esc(coFull('ar'))} بأن ${F?'السيدة':'السيد'}/ <b>${esc(e.ar)}</b>، ${F?'صاحبة':'صاحب'} الرقم الوظيفي (<span class="num">${esc(e.no)}</span>)، ${F?'تعمل':'يعمل'} لدينا بوظيفة «${esc(e.tAr)}» في إدارة ${esc(dpt(e,'ar'))} منذ تاريخ ${g(hd)} الموافق ${h(hd)}، ${F?'وما زالت':'وما زال'} على رأس العمل حتى تاريخ إصدار هذه الشهادة${d.salary?`، ${F?'وتتقاضى':'ويتقاضى'} راتباً شهرياً إجمالياً قدره (<span class="num">${fN(d.salAmt||0)}</span>) ريال سعودي، ${tafqeet(d.salAmt||0)}`:''}.`
+   :`This is to certify that ${F?'Ms.':'Mr.'} <b>${esc(e.en)}</b> (Employee No. ${esc(e.no)}) has been employed by ${esc(coFull('en'))} as ${esc(e.tEn)} in the ${esc(dpt(e,'en'))} Department since ${g(hd)} (${h(hd)}), and that ${F?'she':'he'} remains in active service as of the date of this certificate.${d.salary?` ${F?'Her':'His'} gross monthly salary is SAR ${fN(d.salAmt||0)} (${enAmt(d.salAmt||0)}).`:''}`;
   const p2t=A?`وقد أُعطيت ${F?'لها':'له'} هذه الشهادة بناءً على ${F?'طلبها':'طلبه'} لتقديمها إلى ${to||'من يهمه الأمر'}، دون أدنى مسؤولية على الشركة تجاه الغير.`
    :`This certificate is issued at ${F?'her':'his'} request for submission to ${to||'whom it may concern'}, without any liability on the company towards third parties.`;
   const signed=st.decision==='approved';
@@ -1028,12 +1051,13 @@ function docHTML(r,dl,lvl){
  const wm=r.status==='approved'?'':`<div class="dc-wm${rej?' rej':''}${A?'':' en'}">${rej?D('مرفوض','REJECTED'):D('قيد الاعتماد','PENDING APPROVAL')}</div>`;
  const qr=qrURL(r.ref);
  return `<div class="paper${lvl?' '+lvl:''}" dir="${A?'rtl':'ltr'}" lang="${dl}">${wm}
-  <div class="dc-head"><div class="en"><b>${CO.en}</b><span>${CO.unitEn}</span><span>${CO.addrEn}</span></div><img src="${LOGO}" alt="UTiTCo"><div class="ar"><b>${CO.ar}</b><span>${CO.unitAr}</span><span>${CO.addrAr}</span></div></div>
+  <div class="dc-head lh"><div class="en"><b>${esc(CO.n1En)}</b><span class="s2">${esc(CO.n2En)}</span><span class="ids">${CO.vat?'VAT No.: '+esc(CO.vat):''}${CO.vat&&CO.cr?' &nbsp; ':''}${CO.cr?'C.R. '+esc(CO.cr):''}</span></div><img src="${LOGO}" alt="UTiTCo"><div class="ar"><b>${esc(CO.n1Ar)}</b><span class="s2">${esc(CO.n2Ar)}</span><span class="ids">${CO.vat?'الرقم الضريبي: <span class="ltr">'+esc(CO.vat)+'</span>':''}${CO.vat&&CO.cr?' &nbsp; ':''}${CO.cr?'س.ت: <span class="ltr">'+esc(CO.cr)+'</span>':''}</span></div></div>
   <div class="dc-rule"><i></i></div><div class="dc-rule2"></div>
   <div class="dc-meta"><span><b>${D('الرقم المرجعي','Reference')}:</b> <span class="num">${r.ref}</span></span><span><b>${D('التاريخ','Date')}:</b> ${g(docDate)} &nbsp;|&nbsp; ${h(docDate)}</span></div>
   <div class="dc-title"><h2>${A?t.dAr:t.dEn}</h2><span ${A?'':'style="letter-spacing:0;font-size:12px"'}>${A?t.dEn.toUpperCase():t.dAr}</span></div>
   ${main}
   <div class="dc-foot">${qr?`<img src="${qr}" alt="QR ${r.ref}">`:`<div class="qrph">${r.ref}</div>`}<div><div><b>${D('مستند صادر إلكترونياً','Electronically issued document')}</b> ${D('من نظام الطلبات الداخلية. الموافقات مسجّلة باسم صاحبها وتاريخها ووقتها (توقيت الرياض)، ولا يحتاج إلى توقيع يدوي.','from the Internal Requests system. Each approval is recorded with its approver, date and time (Riyadh time). No handwritten signature is needed.')}</div><div>${D('للتحقق امسح الرمز أو أدخل الرقم المرجعي','To verify, scan the code or enter reference')} <span class="num">${r.ref}</span> ${D('في صفحة «التحقق من مستند».','on the “Verify a document” page.')}</div></div><span class="pg">${D('صفحة 1 من 1','Page 1 of 1')}</span></div>
+  <div class="dc-lh"><div class="en">${[CO.f1En,CO.f2En,CO.f3En].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}${CO.web?`<em>${esc(CO.web)}</em>`:''}</div><div class="ar">${[CO.f1Ar,CO.f2Ar,CO.f3Ar].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}${CO.mail?`<em class="ltr">${esc(CO.mail)}</em>`:''}</div></div>
  </div>`}
 const lvlCache={};
 function docFit(r,dl){const key=[r.ref,dl,r.status,r.stages.filter(s=>s.decision).length].join('|');if(key in lvlCache)return docHTML(r,dl,lvlCache[key]);
@@ -1059,7 +1083,7 @@ async function makePDF(r,dl){
   await Promise.all([...host.querySelectorAll('img')].map(i=>i.decode?i.decode().catch(()=>{}):0));
   const canvas=await window.html2canvas(host.firstElementChild,{scale:2.5,backgroundColor:'#ffffff',logging:false,width:794,height:1123,windowWidth:1200});
   const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
-  pdf.setProperties({title:r.ref+' '+TYPES[r.type].dEn,author:CO.en,subject:TYPES[r.type].dEn});
+  pdf.setProperties({title:r.ref+' '+TYPES[r.type].dEn,author:coFull('en'),subject:TYPES[r.type].dEn});
   pdf.addImage(canvas.toDataURL('image/jpeg',.93),'JPEG',0,0,210,297,undefined,'FAST');
   return pdf.output('blob')}finally{host.remove()}}
 async function downloadPDF(){const m=S.modal;if(!m||m.kind!=='doc'||m.busy)return;const r=S.reqs.find(x=>x.id===m.id),dl=r.type==='letter'?r.d.lang:m.dl;
