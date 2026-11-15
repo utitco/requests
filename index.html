@@ -506,6 +506,12 @@ body:has(.asbar) #toast{bottom:64px}
 .hcarry{border:1px dashed var(--line-2,var(--line));border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:13.5px}.hcarry>div{display:flex;gap:8px;align-items:center}.hcarry span{margin-inline-end:auto}
 .bad-t{color:#C4572F}
 @media (max-width:560px){.hrow{flex-wrap:wrap}.hrow input{flex-basis:100%}}
+.hpick{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:rgba(85,125,108,.06)}
+.hp-h{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hp-h b{font-size:13.5px}.hp-h select{width:auto;flex:1;min-width:160px;max-width:320px}
+.seg{display:inline-flex;border:1px solid var(--line-2,var(--line));border-radius:99px;overflow:hidden}.seg button{border:0;background:none;font:inherit;font-size:12px;padding:5px 12px;cursor:pointer;color:var(--muted,#667)}.seg button.on{background:#557D6C;color:#fff}
+.hp-c{display:flex;gap:6px;flex-wrap:wrap}
+.hp-b{border:1px solid var(--line-2,var(--line));background:var(--surface);color:inherit;border-radius:99px;font:inherit;font-size:12.5px;padding:5px 12px;cursor:pointer;text-align:start}
+.hp-b:hover,.hp-b:focus-visible{border-color:#557D6C;outline:none}
 </style>
 </head>
 <body>
@@ -676,7 +682,7 @@ function pill(r){const st={pending:L('قيد المراجعة','In review'),appr
 const $=s=>document.querySelector(s);
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function gate(inner){return `<div class="gate"><div class="gcard"><img src="${LOGO}" alt="UTiTCo"><h1>${L('نظام الطلبات الداخلية','Internal Requests')}</h1>${inner}<div class="grow"><button class="iconbtn" data-act="lang">${L('English','عربي')}</button><button class="iconbtn" data-act="theme" aria-label="${L('تبديل الوضع الفاتح والداكن','Toggle light and dark')}">${themeNow()==='dark'?IC.sun:IC.moon}</button></div></div></div>`}
-function refresh(){viewApply();const m=S.modal;{const a=document.activeElement;if(!m&&S.tab==='wr'&&a&&a.closest&&a.closest('#wrform')&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return}if(m&&m.kind==='hrf')hrRead();wrRead();if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup'||m.kind==='pxi')){renderApp();return}render()}
+function refresh(){viewApply();const m=S.modal;{const a=document.activeElement;if(!m&&S.tab==='wr'&&a&&a.closest&&a.closest('#wrform')&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return}if(m&&m.kind==='hrf')hrRead();wrRead();if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup'||m.kind==='pxi'||m.kind==='wt')){renderApp();return}render()}
 function render(){renderApp();renderOv()}
 function renderApp(){
  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ar'?'rtl':'ltr';
@@ -781,7 +787,7 @@ function verify(){const refs=S.reqs.slice(0,3).map(r=>r.ref);let res='';
 /* ---------- overlays ---------- */
 function renderOv(){const m=S.modal,el=$('#ov');if(!m){el.innerHTML='';document.body.style.overflow='';return}
  document.body.style.overflow='hidden';
- el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):m.kind==='hrf'?hrOv(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
+ el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):m.kind==='hrf'?hrOv(m):m.kind==='wt'?wtOv(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
  if(m.kind==='doc')fit();}
 function detailBody(r,l){const d=r.d,A=(l||S.lang)==='ar',kv=p=>`<dl class="kv">${p.filter(Boolean).map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('')}</dl>`;
  const dt=s=>`${fG(d2ts(s))} <small class="note">· ${fH(d2ts(s))}</small>`;
@@ -1159,7 +1165,7 @@ function hrPanel(){if(H.key!==hrKey()){hrLoad();return `<p class="note">${L('ج�
  const unseen=H.reps.filter(r=>r.status==='sent'&&!r.seenAt).length,full=es.filter(e=>hrScore(e.key).pct===100).length;
  const weeks=[];for(let i=7;i>=0;i--)weeks.push(weekOf(now()-i*7*DAY));
  return `<div class="hr-top"><p class="note">${L('ملف لكل موظف فيه بياناته وعقده ومستنداته وتقاريره الأسبوعية، وفق ما تطلبه المادة 17 من نظام العمل ولائحته التنفيذية. اضغط أي موظف لفتح ملفه.','One file per employee with their details, contract, documents and weekly reports, as required by Article 17 of the Labor Law and its regulations. Select an employee to open their file.')}</p>
-  <div class="hr-acts"><button class="btn pri" data-act="hr-zip">${L('تنزيل كل الملفات (ZIP)','Download all files (ZIP)')}</button><button class="btn" data-act="hr-xlsx">${L('سجلات المنشأة (Excel)','Establishment registers (Excel)')}</button>${realOwner()&&!S.as?`<button class="btn" data-act="hr-seed">${L('إنشاء ملفين تجريبيين','Create two sample files')}</button>`:''}</div></div>
+  <div class="hr-acts"><button class="btn pri" data-act="hr-zip">${L('تنزيل كل الملفات (ZIP)','Download all files (ZIP)')}</button><button class="btn" data-act="hr-xlsx">${L('سجلات المنشأة (Excel)','Establishment registers (Excel)')}</button><label class="btn" for="hup-bulk">${L('رفع عقود قوى دفعة واحدة','Upload Qiwa contracts in bulk')}</label><input type="file" id="hup-bulk" accept="application/pdf" multiple hidden>${isAdmin()?`<button class="btn" data-act="wt-edit">${L('المهام الجاهزة','Ready-made tasks')}</button>`:''}${realOwner()&&!S.as?`<button class="btn" data-act="hr-seed">${L('إنشاء ملفين تجريبيين','Create two sample files')}</button>`:''}</div></div>
  <div class="kpis"><div class="kpi"><span>${L('ملفات مكتملة','Complete files')}</span><b class="num">${full} / ${es.length}</b></div><div class="kpi"><span>${L('تقارير هذا الأسبوع','Reports this week')}</span><b class="num">${sent} / ${wr.length}</b></div><div class="kpi"><span>${L('تقارير لم تُراجَع','Reports not reviewed')}</span><b class="num">${unseen}</b></div><div class="kpi"><span>${L('الأسبوع الحالي','Current week')}</span><b class="num" style="font-size:15px">${weekLbl(w)}</b></div></div>
  <div class="hr-wrap"><table class="hr-t"><thead><tr><th>${L('الموظف','Employee')}</th><th>${L('اكتمال الملف','File completeness')}</th><th>${L('تقرير هذا الأسبوع','This week’s report')}</th><th>${L('آخر 8 أسابيع','Last 8 weeks')}</th></tr></thead><tbody>
  ${es.map(e=>{const sc=hrScore(e.key),f=H.files[e.key]||{};return `<tr data-act="hr-open" data-key="${esc(e.key)}" tabindex="0"><td><b>${esc(nm(e))}</b>${demoTag(f)}<small>${esc(e.no)} · ${esc(L(e.tAr,e.tEn||e.tAr))}</small></td>
@@ -1209,6 +1215,7 @@ function wrPanel(){if(H.key!==hrKey()){hrLoad();return `<p class="note">${L('ج�
  const form=sent?`<div class="hmiss ok">${L('سلّمت تقرير هذا الأسبوع. شكراً لك.','You have submitted this week’s report. Thank you.')}</div>`:`<form id="wrform" class="chart" novalidate>
   <h3>${L('تقرير الأسبوع','Report for the week')} <span class="num">${weekLbl(w)}</span></h3><p class="note">${L('يُسلَّم قبل نهاية يوم الخميس. تقدر تحفظه مسودة وتكمله خلال الأسبوع. بعد الإرسال لا يُعدَّل.','Due by end of Thursday. You can save a draft and finish it during the week. It cannot be edited after submission.')} ${now()>weekDue(w)?`<b class="bad-t">${L('انتهى الموعد.','The deadline has passed.')}</b>`:''}</p>
   ${d.carry.length?`<div class="hcarry"><b>${L('خطتك من الأسبوع الماضي','Your plan from last week')}</b>${d.carry.map((t,i)=>`<div><span>${esc(t)}</span><button type="button" class="btn sm" data-act="wr-carry" data-i="${i}">${L('أضِفه للمنجز','Add to accomplished')}</button></div>`).join('')}</div>`:''}
+  ${wtPick()}
   <h4>${L('ما أنجزته هذا الأسبوع','What you accomplished this week')}</h4>
   ${d.done.map((x,i)=>`<div class="hrow"><input name="dt${i}" type="text" maxlength="300" value="${esc(x.t)}" aria-label="${L('بند','Item')} ${i+1}" placeholder="${L('مثال: إعداد عرض السعر لعميل…','e.g. Prepared the quotation for a client…')}"><select name="ds${i}" aria-label="${L('الحالة','Status')}">${Object.keys(WST).map(k=>`<option value="${k}" ${x.st===k?'selected':''}>${L(WST[k][0],WST[k][1])}</option>`).join('')}</select><button type="button" class="btn sm" data-act="wr-del" data-a="done" data-i="${i}" aria-label="${L('حذف البند','Remove item')}">×</button></div>`).join('')}
   <div><button type="button" class="btn sm" data-act="wr-add" data-a="done">+ ${L('بند','Add item')}</button></div>
@@ -1269,6 +1276,42 @@ async function hrSeed(){if(!realOwner()||S.as)return;const D=[['sarah','20000000
    if(!docsOf(k).length)for(const kd of HK.filter(x=>x[3])){const b=await demoImg(kd[1],e.ar),s=await blob2b64(b);await BE.hrPutDoc({emp:k,kind:kd[0],name:kd[1]+' (تجريبي).jpg',type:'image/jpeg',size:b.size,n:1,at:now(),by:S.user,demo:true},[s])}
    for(let i=1;i<=4;i++){const w=weekOf(now()-i*7*DAY);if(repOf(k,w))continue;const it=W[(i+(r[0]==='khalid'?1:0))%4],sent=weekDue(w)-(i===3?-2*DAY:Math.round(DAY*.4));await BE.hrSaveRep(repId(k,w),{emp:k,week:w,done:it.map(x=>({t:x[0],st:x[1]})),plan:P.map(t=>({t})),block:i===2?'أحتاج اعتماد عرض السعر من المالية قبل الخميس.':'',load:i===2?'heavy':'normal',status:'sent',sentAt:sent,updatedAt:sent,demo:true,via:'admin',seenAt:i>1?sent+DAY:null,seenBy:i>1?S.user:null,reply:i===2?'تم التنسيق مع المالية. شكراً على المتابعة.':'',replyAt:i===2?sent+DAY:null},true)}}
   toast(made?L('أُنشئ الملفان التجريبيان.','Sample files created.'):L('لم أجد الموظفين التجريبيين (سارة وخالد).','Sample employees (Sarah and Khalid) not found.'));hrLoad(true)}catch(e){console.error(e);toast(saveErr(e))}}
+const WT_DEF=`# توريد نوبكو القصيم
+متابعة أوامر الشراء الواردة من نوبكو
+تنسيق مواعيد التسليم مع المستودع
+تجهيز مستندات الشحن والتسليم
+متابعة محاضر الاستلام مع الجهة المستفيدة
+مراجعة الكميات المورّدة ومطابقتها مع أمر الشراء
+متابعة الفواتير والمستخلصات
+حصر النواقص والمرتجعات ومعالجتها
+التواصل مع المورّد بخصوص الشحنات
+تحديث سجل التوريد وحالة الطلبيات
+إعداد تقرير حالة التوريد
+
+# أعمال إدارية عامة
+حضور اجتماع الفريق الأسبوعي
+إعداد المراسلات والخطابات
+أرشفة المستندات وتنظيم الملفات
+الرد على الاستفسارات ومتابعتها
+تدريب أو تطوير مهني
+
+# الإشراف الميداني
+جولة تفقدية في الموقع
+متابعة تقدم الأعمال مع المقاول
+مراجعة اشتراطات السلامة في الموقع
+استلام مواد وتوثيقها
+إعداد تقرير الموقع اليومي`;
+function wtList(){const t=(H.tasks||'').trim()||WT_DEF,out=[];let cur=null;t.split('\n').forEach(l=>{l=l.trim();if(!l)return;if(l[0]==='#'){cur={name:l.replace(/^#+\s*/,''),tasks:[]};out.push(cur)}else{if(!cur){cur={name:L('عام','General'),tasks:[]};out.push(cur)}cur.tasks.push(l)}});return out.filter(p=>p.name)}
+function wtPick(){const ps=wtList();if(!ps.length)return '';const i=Math.min(S.wtP||0,ps.length-1),to=S.wtTo||'done';
+ return `<div class="hpick"><div class="hp-h"><b>${L('اختر من المهام الجاهزة','Pick from ready-made tasks')}</b><select id="wt-proj" aria-label="${L('المشروع','Project')}">${ps.map((p,j)=>`<option value="${j}" ${j===i?'selected':''}>${esc(p.name)}</option>`).join('')}</select><span class="seg"><button type="button" class="${to==='done'?'on':''}" data-act="wt-to" data-to="done">${L('أضِف إلى المنجز','Add to accomplished')}</button><button type="button" class="${to==='plan'?'on':''}" data-act="wt-to" data-to="plan">${L('أضِف إلى الخطة','Add to plan')}</button></span></div>
+  <div class="hp-c">${ps[i].tasks.map((t,j)=>`<button type="button" class="hp-b" data-act="wt-add" data-j="${j}">+ ${esc(t)}</button>`).join('')}</div><p class="note">${L('اضغط المهمة لإضافتها، ثم عدّل نصها أو حالتها إذا احتجت. وتقدر تكتب بنداً من عندك.','Select a task to add it, then edit its text or status if needed. You can also write your own item.')}</p></div>`}
+function wtOv(m){const x=`<button type="button" class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button>`;return `<div class="ov mid" data-act="close-bg"><form class="sheet" id="wtform" role="dialog" aria-modal="true" novalidate><div class="sh-h"><h2>${L('المهام الجاهزة للتقرير الأسبوعي','Ready-made tasks for the weekly report')}</h2>${x}</div><div class="sh-b"><p class="note">${L('سطر يبدأ بعلامة # هو اسم مشروع أو مجموعة، والأسطر تحته مهامها. الموظف يختار منها في تقريره.','A line starting with # is a project or group name; the lines under it are its tasks. Employees pick from them in their report.')}</p><textarea id="wt-text" rows="18" maxlength="8000" dir="auto">${esc(m.text)}</textarea></div><div class="sh-f"><button type="button" class="btn" data-act="close">${L('إلغاء','Cancel')}</button><button type="submit" class="btn pri">${L('حفظ','Save')}</button></div></form></div>`}
+async function hrBulk(files){const fs=[...files||[]];if(!fs.length)return;let ok=0;const miss=[];toast(L('جارٍ رفع العقود…','Uploading contracts…'));
+ for(let f of fs){const nums=(f.name.match(/\d{5,}/g)||[]),k=Object.keys(H.files).find(e=>nums.includes(String(H.files[e].contractNo||'').trim()));
+  if(!k||f.type!=='application/pdf'||f.size>5*1024*1024){miss.push(f.name);continue}
+  if(docsOf(k).some(d=>d.kind==='contract'&&d.name===f.name)){ok++;continue}
+  try{const b=await blob2b64(f),parts=b64chunks(b,700000);await BE.hrPutDoc({emp:k,kind:'contract',name:f.name.slice(0,120),type:f.type,size:f.size,n:parts.length,at:now(),by:S.user},parts);ok++}catch(e){console.error(e);miss.push(f.name)}}
+ toast(L(`رُفع ${ok} عقداً.`,`${ok} contracts uploaded.`)+(miss.length?' '+L('لم يُطابَق: ','Not matched: ')+miss.join('، '):''));hrLoad(true)}
 function hrRefresh(){hrRead();wrRead();render()}
 function myFilePanel(){if(H.key!==hrKey()){hrLoad();return ''}const sc=hrScore(S.user);return `<div class="chart"><h3>${L('ملفي الوظيفي','My employee file')}</h3><p class="note">${L('بياناتك وعقدك ومستنداتك المحفوظة لدى الموارد البشرية. تقدر ترفع مستنداتك الناقصة بنفسك.','Your details, contract and documents held by HR. You can upload your own missing documents.')}</p><div class="hbar"><i style="width:${sc.pct}%" class="${sc.pct===100?'ok':sc.pct>=60?'mid':'low'}"></i></div><p class="note">${L('اكتمال الملف','File completeness')}: <b class="num">${sc.pct}%</b>${sc.miss.length?' · '+L('ينقص','missing')+': '+sc.miss.map(esc).join('، '):''}</p><div><button class="btn pri" data-act="hr-open" data-key="${esc(S.user)}">${L('فتح ملفي','Open my file')}</button></div></div>`}
 /* ---------- supplier purchasing (admin + purchasing permission) ---------- */
@@ -1473,6 +1516,9 @@ const ACT={
  'wr-del'(el){wrRead();const a=S.wr[el.dataset.a];a.splice(+el.dataset.i,1);if(!a.length)a.push(el.dataset.a==='done'?{t:'',st:'done'}:{t:''});renderApp()},
  'wr-carry'(el){wrRead();const d=S.wr,t=d.carry.splice(+el.dataset.i,1)[0];if(d.done.length===1&&!d.done[0].t.trim())d.done[0].t=t;else d.done.push({t,st:'done'});renderApp()},
  'wr-save'(){wrSave(false)},
+ 'wt-to'(el){wrRead();S.wtTo=el.dataset.to;renderApp()},
+ 'wt-add'(el){wrRead();const p=wtList()[Math.min(S.wtP||0,wtList().length-1)],t=p.name+' — '+p.tasks[+el.dataset.j],to=S.wtTo||'done',a=S.wr[to];if(a.some(x=>x.t.trim()===t)){toast(L('البند مضاف من قبل.','Already added.'));return}const e=a.find(x=>!x.t.trim());if(e)e.t=t;else a.push(to==='done'?{t,st:'done'}:{t});renderApp()},
+ 'wt-edit'(){S.modal={kind:'wt',text:(H.tasks||'').trim()||WT_DEF};renderOv()},
  'as-go'(el,ev){ev.preventDefault();actAs(el.dataset.key)},
  'as-back'(){actBack()},
  'stamp-del'(){BE.saveConfig('company',{stamp:''}).then(()=>toast(L('أُزيل الختم.','Stamp removed.'))).catch(e=>toast(saveErr(e)))},
@@ -1510,7 +1556,9 @@ const ACT={
 function doVerify(){const q=S.vq.trim().toUpperCase();const r=S.reqs.find(x=>x.ref===q);S.vres=q?(r?r.id:null):undefined;render()}
 document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f)f(el,ev)});
 document.addEventListener('change',ev=>{const t=ev.target;
- if(t.dataset&&t.dataset.hkind){const f=t.files&&t.files[0],k=t.dataset.hkind;t.value='';hrRead();hrUpload(f,k,S.modal.key)}
+ if(t.id==='hup-bulk'){const fs=[...t.files];t.value='';hrBulk(fs)}
+ else if(t.id==='wt-proj'){wrRead();S.wtP=+t.value;renderApp()}
+ else if(t.dataset&&t.dataset.hkind){const f=t.files&&t.files[0],k=t.dataset.hkind;t.value='';hrRead();hrUpload(f,k,S.modal.key)}
  else if(t.id==='s-stamp'){const f=t.files&&t.files[0];t.value='';setStamp(f)}
  else if(t.id==='impfile'){const f=t.files&&t.files[0];t.value='';importFile(f)}
  else if(t.id==='pimp'){const f=t.files&&t.files[0];t.value='';purchImport(f)}
@@ -1524,7 +1572,7 @@ document.addEventListener('input',ev=>{const t=ev.target;
  else if(t.id==='vq'){S.vq=t.value}
  else if(t.id==='note'){S.modal.note=t.value}
  else if(t.closest('#nform')){readForm();const lv=$('#live');if(lv){const h=liveBox(S.modal.type,S.modal.d);lv.innerHTML=h;lv.hidden=!h}}});
-document.addEventListener('submit',ev=>{ev.preventDefault();if(ev.target.id==='nform')submit();else if(ev.target.id==='eform')saveEmp();else if(ev.target.id==='sform')saveSettings();else if(ev.target.id==='hrform')hrSave();else if(ev.target.id==='wrform')wrSave(true);else if(ev.target.id==='pofform')savePof();else if(ev.target.id==='pitform')savePit();else if(ev.target.id==='psupform')savePsup();else if(ev.target.id==='payform'){const a=+pval('payform','amt'),dt=pval('payform','date'),nt=pval('payform','note');if(!(a>0)){toast(L('أدخل مبلغ الدفعة.','Enter the payment amount.'))}else poPatch(d=>{d.pays.push({amt:Math.round(a*100)/100,date:dt,note:nt})},L('أُضيفت الدفعة.','Payment added.'))}else if(ev.target.id==='vform'){S.vq=$('#vq').value;doVerify()}});
+document.addEventListener('submit',ev=>{ev.preventDefault();if(ev.target.id==='nform')submit();else if(ev.target.id==='eform')saveEmp();else if(ev.target.id==='sform')saveSettings();else if(ev.target.id==='hrform')hrSave();else if(ev.target.id==='wtform'){const v=document.querySelector('#wt-text').value;BE.saveConfig('wrtasks',{text:v}).then(()=>{S.modal=null;toast(L('حُفظت المهام الجاهزة.','Ready-made tasks saved.'));hrLoad(true)}).catch(e=>{console.error(e);toast(saveErr(e))})}else if(ev.target.id==='wrform')wrSave(true);else if(ev.target.id==='pofform')savePof();else if(ev.target.id==='pitform')savePit();else if(ev.target.id==='psupform')savePsup();else if(ev.target.id==='payform'){const a=+pval('payform','amt'),dt=pval('payform','date'),nt=pval('payform','note');if(!(a>0)){toast(L('أدخل مبلغ الدفعة.','Enter the payment amount.'))}else poPatch(d=>{d.pays.push({amt:Math.round(a*100)/100,date:dt,note:nt})},L('أُضيفت الدفعة.','Payment added.'))}else if(ev.target.id==='vform'){S.vq=$('#vq').value;doVerify()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.modal)ACT.close()});
 window.addEventListener('resize',fit);
 document.addEventListener('keydown',ev=>{const t=ev.target;if(t&&t.classList&&t.classList.contains('cellin')){if(ev.key==='Enter'){ev.preventDefault();cellCommit(t,true)}else if(ev.key==='Escape'){ev.stopPropagation();cellCommit(t,false)}}},true);
@@ -1557,7 +1605,7 @@ function fbBE(){
   unsubs.push(E.onSnapshot(q=>{const m={};q.forEach(d=>{m[d.id]=Object.assign({},d.data(),{key:d.id})});S.emps=m;gotE=true;go()},fail))}
  const HC=n=>db.collection(n),qd=q=>q.docs.map(d=>Object.assign(d.data(),{id:d.id}));
  const hrApi={
-  async hrLoad(u,all){const o={files:{},docs:[],reps:[],notes:{}};if(all){const [f,d,r,n]=await Promise.all([HC('hrfiles').get(),HC('hrdocs').get(),HC('wreports').get(),HC('hrnotes').get()]);f.forEach(x=>{o.files[x.id]=x.data()});o.docs=qd(d);o.reps=qd(r);n.forEach(x=>{o.notes[x.id]=x.data()})}
+  async hrLoad(u,all){const o={files:{},docs:[],reps:[],notes:{}};try{const t=await CF.doc('wrtasks').get();o.tasks=t.exists?(t.data().text||''):''}catch(e){o.tasks=''}if(all){const [f,d,r,n]=await Promise.all([HC('hrfiles').get(),HC('hrdocs').get(),HC('wreports').get(),HC('hrnotes').get()]);f.forEach(x=>{o.files[x.id]=x.data()});o.docs=qd(d);o.reps=qd(r);n.forEach(x=>{o.notes[x.id]=x.data()})}
    else{const [f,d,r]=await Promise.all([HC('hrfiles').doc(u).get(),HC('hrdocs').where('emp','==',u).get(),HC('wreports').where('emp','==',u).get()]);if(f.exists)o.files[u]=f.data();o.docs=qd(d);o.reps=qd(r)}return o},
   hrSaveFile(k,data){return HC('hrfiles').doc(k).set(data,{merge:true})},
   hrSaveNote(k,data){return HC('hrnotes').doc(k).set(data)},
@@ -1593,7 +1641,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
  const login=e=>{if(e)store.set(UK,e);else store.del(UK);if(onUser(e,true))sync()};
  const MH=()=>M.hr||(M.hr={files:{},docs:{},parts:{},reps:{},notes:{}}),deny=()=>{throw {code:'permission-denied'}};
  return {mock:true,login,resync:sync,
-  async hrLoad(u,all){const h=MH(),o={files:{},docs:[],reps:[],notes:{}};all=all&&canManage();Object.keys(h.files).forEach(k=>{if(all||k===u)o.files[k]=cl(h.files[k])});o.docs=Object.keys(h.docs).map(id=>Object.assign(cl(h.docs[id]),{id})).filter(d=>all||d.emp===u);o.reps=Object.keys(h.reps).map(id=>Object.assign(cl(h.reps[id]),{id})).filter(d=>all||d.emp===u);if(all)o.notes=cl(h.notes);return o},
+  async hrLoad(u,all){const h=MH(),o={files:{},docs:[],reps:[],notes:{},tasks:(M.wrtasks||{}).text||''};all=all&&canManage();Object.keys(h.files).forEach(k=>{if(all||k===u)o.files[k]=cl(h.files[k])});o.docs=Object.keys(h.docs).map(id=>Object.assign(cl(h.docs[id]),{id})).filter(d=>all||d.emp===u);o.reps=Object.keys(h.reps).map(id=>Object.assign(cl(h.reps[id]),{id})).filter(d=>all||d.emp===u);if(all)o.notes=cl(h.notes);return o},
   async hrSaveFile(k,data){if(!canManage())deny();const h=MH();h.files[k]=Object.assign({},h.files[k],data);persist()},
   async hrSaveNote(k,data){if(!canManage())deny();MH().notes[k]=data;persist()},
   async hrPutDoc(meta,parts){if(!canManage()&&meta.emp!==S.user)deny();const h=MH(),id='d'+now().toString(36)+Math.random().toString(36).slice(2,6);h.docs[id]=meta;h.parts[id]=parts;persist();return id},
