@@ -753,7 +753,7 @@ function renderApp(){
   <section class="panel" id="panel">${panel()}</section>
  </main>
  <footer class="foot"><div class="wrap">
-  <p class="demo"><strong>${L('إصدار أولي','Initial release')}</strong><span>${L('البيانات محفوظة في قاعدة بيانات الشركة داخل المملكة. التواقيع والأختام في المستندات إلكترونية صادرة من النظام.','Data is stored in the company database inside the Kingdom. Signatures and stamps on forms are electronic and issued by the system.')}</span></p>
+  <p class="demo"><span>© <span class="num">${new Date().getFullYear()}</span> ${esc(coFull(S.lang))}</span></p>
   <span class="note num">${esc(S.user)}</span>
  </div></footer>`;
 }
