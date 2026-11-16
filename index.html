@@ -512,6 +512,18 @@ body:has(.asbar) #toast{bottom:64px}
 .hp-c{display:flex;gap:6px;flex-wrap:wrap}
 .hp-b{border:1px solid var(--line-2,var(--line));background:var(--surface);color:inherit;border-radius:99px;font:inherit;font-size:12.5px;padding:5px 12px;cursor:pointer;text-align:start}
 .hp-b:hover,.hp-b:focus-visible{border-color:#557D6C;outline:none}
+/* employee file header + groups, printable forms */
+.hcard{display:flex;gap:14px;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line);background:rgba(85,125,108,.07)}
+.hav{flex:none;width:52px;height:52px;border-radius:50%;background:#557D6C;color:#fff;display:grid;place-items:center;font-size:22px;font-weight:700}
+.hc-m{display:flex;flex-direction:column;gap:1px;min-width:0;flex:1;font-size:12.5px;color:var(--muted,#667);line-height:1.6}.hc-m b{font-size:17px;color:var(--fg,inherit);font-weight:700}
+.hc-p{flex:none;text-align:center;display:flex;flex-direction:column;gap:4px;align-items:center}.hc-p b{font-size:22px}.hc-p .hbar{min-width:90px;max-width:90px}.hc-p small{font-size:11px;color:var(--muted,#667)}
+.hgrp{border:1px solid var(--line);border-radius:12px;padding:6px 14px 14px;margin:0;min-width:0;display:flex;flex-direction:column;gap:8px}
+.hgrp legend{padding:0 8px;font-weight:700;font-size:13.5px;color:#557D6C}
+.hmc{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px}.hmc i{font-style:normal;font-size:12px;padding:1px 9px;border-radius:99px;background:var(--surface);border:1px solid rgba(226,112,79,.45)}
+.hr-h .btn.sm{padding:2px 10px}
+.pp-c{font-weight:500;color:#55665e;font-size:10.5px;margin-inline-start:auto}
+.pp-w{color:#9a6b0c;font-weight:600}
+@media (max-width:560px){.hcard{flex-wrap:wrap}.hc-p{flex-direction:row;gap:8px}}
 </style>
 </head>
 <body>
@@ -580,7 +592,7 @@ const TYPES={
  letter:{ar:'خطاب تعريف',en:'Employment letter',dAr:'شهادة تعريف',dEn:'Employment Certificate',file:'Employment-Certificate',route:['hr']},
  advance:{ar:'سلفة',en:'Salary advance',dAr:'نموذج طلب سلفة',dEn:'Salary Advance Form',file:'Salary-Advance',route:['mgr','hr','fin']}
 };
-const STAGE={mgr:['المدير المباشر','Line manager'],hr:['الموارد البشرية','Human Resources'],fin:['المالية','Finance']};
+const STAGE={mgr:['المدير المباشر','Line manager'],hr:['الموارد البشرية','Human Resources'],fin:['المالية','Finance'],ceo:['الإدارة العليا','Executive management']};
 const OPT={
  leave:{annual:['سنوية','Annual'],sick:['مرضية','Sick'],emergency:['اضطرارية','Emergency'],unpaid:['بدون راتب','Unpaid']},
  item:{laptop:['لابتوب','Laptop'],mobile:['جوال','Mobile phone'],car:['سيارة','Vehicle']},
@@ -628,7 +640,10 @@ function enAmt(x){const c=Math.round(x*100),n=Math.floor(c/100),h=c%100;return e
 
 /* ---------- request logic ---------- */
 function approverFor(stage,e){let a=stage==='mgr'?e.mgr:R[stage];if(!a||a===e.key||!S.emps[a]||S.emps[a].active===false)a=R.ceo;return a||null}
-function buildStages(type,e){let st=TYPES[type].route.map(k=>({key:k,by:approverFor(k,e),decision:null,at:null,note:''}));if(e.key===R.ceo)st=st.filter(s=>s.by!==R.ceo);return st}
+function buildStages(type,e){let st=TYPES[type].route.map(k=>{const want=k==='mgr'?e.mgr:R[k],by=approverFor(k,e),o={key:k,by,decision:null,at:null,note:''};if(by&&by!==want)o.alt='ceo';return o});
+ if(e.key===R.ceo)st=st.filter(s=>s.by!==R.ceo);
+ const out=[];st.forEach(x=>{const p=out[out.length-1];if(p&&p.by&&p.by===x.by){if(p.alt||x.alt){p.key='ceo';delete p.alt}}else out.push(x)});return out}
+const stLbl=(x,l)=>x.alt&&STAGE[x.alt]?(l||S.lang)==='ar'?`${STAGE[x.alt][0]} (نيابةً عن ${STAGE[x.key][0]})`:`${STAGE[x.alt][1]} (on behalf of ${STAGE[x.key][1]})`:o2(STAGE[x.key]||STAGE.mgr,l);
 const cur=r=>r.status==='pending'?r.stages.find(s=>!s.decision):null;
 function since(r){const i=r.stages.findIndex(s=>!s.decision);return i<=0?r.at:r.stages[i-1].at}
 const isLate=r=>r.status==='pending'&&now()-since(r)>2*DAY;
@@ -682,7 +697,7 @@ function pill(r){const st={pending:L('قيد المراجعة','In review'),appr
 const $=s=>document.querySelector(s);
 function themeNow(){return document.documentElement.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light')}
 function gate(inner){return `<div class="gate"><div class="gcard"><img src="${LOGO}" alt="UTiTCo"><h1>${L('نظام الطلبات الداخلية','Internal Requests')}</h1>${inner}<div class="grow"><button class="iconbtn" data-act="lang">${L('English','عربي')}</button><button class="iconbtn" data-act="theme" aria-label="${L('تبديل الوضع الفاتح والداكن','Toggle light and dark')}">${themeNow()==='dark'?IC.sun:IC.moon}</button></div></div></div>`}
-function refresh(){viewApply();const m=S.modal;{const a=document.activeElement;if(!m&&S.tab==='wr'&&a&&a.closest&&a.closest('#wrform')&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return}if(m&&m.kind==='hrf')hrRead();wrRead();if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup'||m.kind==='pxi'||m.kind==='wt')){renderApp();return}render()}
+function refresh(){viewApply();const m=S.modal;{const a=document.activeElement;if(!m&&S.tab==='wr'&&a&&a.closest&&a.closest('#wrform')&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))return}if(m&&m.kind==='hrf')hrRead();wrRead();if(m&&(m.kind==='new'||m.kind==='emp'||m.kind==='doc'||m.kind==='imp'||m.kind==='pof'||m.kind==='pit'||m.kind==='psup'||m.kind==='pxi'||m.kind==='wt'||m.kind==='pp')){renderApp();return}render()}
 function render(){renderApp();renderOv()}
 function renderApp(){
  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ar'?'rtl':'ltr';
@@ -748,7 +763,7 @@ function list(){const l=listFor(S.tab),mine=S.tab==='mine';
   <span class="c-type"><i class="ic">${IC[r.type]}</i>${L(TYPES[r.type].ar,TYPES[r.type].en)}</span>
   <span class="c-who">${nm(e)}<small>${dpt(e)}</small></span>
   <span class="c-sum">${esc(summary(r))}</span>
-  <span class="c-st"><span class="pills">${pill(r)}</span>${c?`<small>${L('لدى','With')} ${nm(emp(c.by))} (${o2(STAGE[c.key])})</small>`:''}</span>
+  <span class="c-st"><span class="pills">${pill(r)}</span>${c?`<small>${L('لدى','With')} ${nm(emp(c.by))} (${stLbl(c)})</small>`:''}</span>
  </button>`}).join('')}</div>`}
 
 /* ---------- stats ---------- */
@@ -757,7 +772,7 @@ function stats(){const l=scope(),tot=l.length,pen=l.filter(r=>r.status==='pendin
  const bars=(pairs,cls)=>{const mx=Math.max(1,...pairs.map(p=>p[1]));return pairs.map(p=>`<div class="bar ${cls||''}"><span>${p[0]}</span><div class="t"><i style="width:${p[1]/mx*100}%"></i></div><b class="num">${p[1]}</b></div>`).join('')};
  const byT=Object.keys(TYPES).map(k=>[L(TYPES[k].ar,TYPES[k].en),l.filter(r=>r.type===k).length]);
  const dm={};l.forEach(r=>{const k=dpt(emp(r.emp));dm[k]=(dm[k]||0)+1});const byD=Object.keys(dm).map(k=>[esc(k),dm[k]]).sort((a,b)=>b[1]-a[1]).slice(0,8);
- const byS=Object.keys(STAGE).map(k=>[o2(STAGE[k]),pen.filter(r=>cur(r).key===k).length]);
+ const byS=Object.keys(STAGE).map(k=>[o2(STAGE[k]),pen.filter(r=>(cur(r).alt||cur(r).key)===k).length]);
  const seg=[[L('معتمد','Approved'),ap.length,'var(--ok)'],[L('قيد المراجعة','In review'),pen.length-late.length,'var(--wait)'],[L('متأخر','Overdue'),late.length,'var(--bad)'],[L('مرفوض','Rejected'),rj.length,'var(--ink-3)']];
  return `<p class="scope">${isBoss(S.user)?L('النطاق: جميع طلبات الشركة','Scope: all company requests'):L('النطاق: طلبات فريقك','Scope: your team’s requests')}</p>
  <div class="kpis">
@@ -787,8 +802,8 @@ function verify(){const refs=S.reqs.slice(0,3).map(r=>r.ref);let res='';
 /* ---------- overlays ---------- */
 function renderOv(){const m=S.modal,el=$('#ov');if(!m){el.innerHTML='';document.body.style.overflow='';return}
  document.body.style.overflow='hidden';
- el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):m.kind==='hrf'?hrOv(m):m.kind==='wt'?wtOv(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
- if(m.kind==='doc')fit();}
+ el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):m.kind==='hrf'?hrOv(m):m.kind==='wt'?wtOv(m):m.kind==='pp'?ppView(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
+ if(m.kind==='doc'||m.kind==='pp')fit();}
 function detailBody(r,l){const d=r.d,A=(l||S.lang)==='ar',kv=p=>`<dl class="kv">${p.filter(Boolean).map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('')}</dl>`;
  const dt=s=>`${fG(d2ts(s))} <small class="note">· ${fH(d2ts(s))}</small>`;
  switch(r.type){
@@ -802,14 +817,14 @@ function detail(m){const r=S.reqs.find(x=>x.id===m.id);if(!r){S.modal=null;retur
  const tl=[`<li><span class="dot approved">✓</span><div><b>${L('قُدّم الطلب','Request submitted')}</b> — ${nm(e)}<div class="when">${fG(r.at)} · ${fH(r.at)} · <span class="num">${fT(r.at)}</span></div>${r.via?`<div class="via">${L('نُفّذ من حساب مدير النظام للتجربة','Done from the system admin account for testing')}</div>`:''}</div></li>`]
  .concat(r.stages.map((s,i)=>{const a=emp(s.by),prev=i?r.stages[i-1].at:r.at;let cls='',mark=i+1,st='';
   if(s.decision==='approved'){cls='approved';mark='✓';st=L('اعتمد','Approved')}else if(s.decision==='rejected'){cls='rejected';mark='✕';st=L('رفض','Rejected');dead=true}else if(c===s){cls='now';st=L('بانتظار الاعتماد','Awaiting approval')}else st=dead?L('لم يصل إلى هذه المرحلة','Not reached'):L('مرحلة قادمة','Upcoming');
-  return `<li class="${s.decision==='rejected'?'rej':''}"><span class="dot ${cls}">${mark}</span><div><b>${o2(STAGE[s.key])}</b> — ${nm(a)} · ${st}
+  return `<li class="${s.decision==='rejected'?'rej':''}"><span class="dot ${cls}">${mark}</span><div><b>${stLbl(s)}</b> — ${nm(a)} · ${st}
    ${s.at?`<div class="when">${fG(s.at)} · ${fH(s.at)} · <span class="num">${fT(s.at)}</span> · ${L('بعد','after')} ${fDur(s.at-prev)}</div>`:c===s?`<div class="when">${L('منذ','Waiting for')} ${fDur(now()-prev)}</div>`:''}
    ${s.via&&s.decision?`<div class="via">${L('نُفّذ من حساب مدير النظام للتجربة','Done from the system admin account for testing')}</div>`:''}${s.note?`<q>${esc(s.note)}</q>`:''}</div></li>`}));
  if(r.status==='approved')tl.push(`<li><span class="dot approved">✓</span><div><b>${L('اكتمل الاعتماد','Fully approved')}</b><div class="when">${L('المدة الكلية','Total time')}: ${fDur(r.closedAt-r.at)}</div></div></li>`);
  let act='';
  if(mineTurn)act=`<div class="act"><div class="f"><label for="note">${L('ملاحظتك (اختيارية عند الاعتماد، مطلوبة عند الرفض)','Your note (optional to approve, required to reject)')}</label><textarea id="note" ${m.err?'aria-invalid="true"':''}>${esc(m.note||'')}</textarea>${m.err?`<span class="err">${L('اكتب سبب الرفض ليصل إلى مقدّم الطلب.','Write the reason so the requester can see it.')}</span>`:''}</div>
   <div class="bts"><button class="btn pri" data-act="approve">${L('اعتماد','Approve')}</button><button class="btn no" data-act="reject">${L('رفض','Reject')}</button></div></div>`;
- else if(c)act=`<div class="act"><span>${L('الطلب بانتظار اعتماد','Waiting for approval by')} <b>${esc(nm(emp(c.by)))}</b> (${o2(STAGE[c.key])}).</span></div>`;
+ else if(c)act=`<div class="act"><span>${L('الطلب بانتظار اعتماد','Waiting for approval by')} <b>${esc(nm(emp(c.by)))}</b> (${stLbl(c)}).</span></div>`;
  return `<div class="ov side" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-label="${r.ref}">
   <div class="sh-h"><h2><span class="num">${r.ref}</span> · ${L(TYPES[r.type].ar,TYPES[r.type].en)}</h2><span class="pills">${pill(r)}</span><button class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div>
   <div class="sh-b">
@@ -1045,12 +1060,12 @@ function docHTML(r,dl,lvl){
  const eap=(ar,en,ts,v)=>`<span class="eap">${D(ar,en)} <span class="ltr">${fS(ts)}</span> ${D('الساعة','at')} <span class="ltr">${fT(ts)}</span>${viaD(v)}</span>`;
  const aRows=[`<tr><td>${D('مقدّم الطلب','Requester')}</td><td>${esc(nm(e,dl))}</td><td class="c"><span class="ok-t">${D('قُدِّم','Submitted')}</span></td><td class="c">${eap('قُدِّم إلكترونياً','Submitted electronically',r.at,r.via)}</td></tr>`]
  .concat(r.stages.map(s=>{const a=emp(s.by);let dec,sg='';if(s.decision==='approved'){dec=`<span class="ok-t">${D('معتمد','Approved')}</span>`;sg=eap('تمت الموافقة إلكترونياً','Approved electronically',s.at,s.via)}else if(s.decision==='rejected'){dec=`<span class="no-t">${D('مرفوض','Rejected')}</span>`;sg=eap('رُفض إلكترونياً','Rejected electronically',s.at,s.via).replace('class="eap"','class="eap no"');dead=true}else dec=`<span class="wt-t">${dead?'—':D('بانتظار الاعتماد','Pending')}</span>`;
-  return `<tr><td>${o2(STAGE[s.key],dl)}</td><td>${esc(nm(a,dl))}</td><td class="c">${dec}</td><td class="c">${sg}</td></tr>`}));
+  return `<tr><td>${stLbl(s,dl)}</td><td>${esc(nm(a,dl))}</td><td class="c">${dec}</td><td class="c">${sg}</td></tr>`}));
  const appr=sec(D('الاعتمادات','Approvals'),`<table class="dc-t dc-appr"><colgroup><col style="width:19%"><col style="width:25%"><col style="width:14%"><col style="width:42%"></colgroup><thead><tr><th>${D('المرحلة','Stage')}</th><th>${D('الاسم','Name')}</th><th class="c">${D('القرار','Decision')}</th><th class="c">${D('الاعتماد الإلكتروني (التاريخ والوقت)','Electronic approval (date and time)')}</th></tr></thead><tbody>${aRows.join('')}</tbody></table>`);
  const rej=r.stages.find(s=>s.decision==='rejected');
  const sealTxt=r.status==='approved'?D(`اعتُمد هذا الطلب نهائياً بتاريخ ${both(r.closedAt)}، وأصبح نافذاً من تاريخه.`,`This request received final approval on ${g(r.closedAt)} (${h(r.closedAt)}) and is effective from that date.`)
-  :rej?`<b>${D('سبب الرفض','Reason for rejection')}:</b> ${esc(rej.note)} <br>(${nm(emp(rej.by),dl)}، ${o2(STAGE[rej.key],dl)})`
-  :D(`هذا المستند غير نافذ إلى حين اكتمال جميع الاعتمادات. المرحلة الحالية: ${o2(STAGE[c.key],dl)} (${nm(emp(c.by),dl)}).`,`This document is not effective until all approvals are complete. Current stage: ${o2(STAGE[c.key],dl)} (${nm(emp(c.by),dl)}).`);
+  :rej?`<b>${D('سبب الرفض','Reason for rejection')}:</b> ${esc(rej.note)} <br>(${nm(emp(rej.by),dl)}، ${stLbl(rej,dl)})`
+  :D(`هذا المستند غير نافذ إلى حين اكتمال جميع الاعتمادات. المرحلة الحالية: ${stLbl(c,dl)} (${nm(emp(c.by),dl)}).`,`This document is not effective until all approvals are complete. Current stage: ${stLbl(c,dl)} (${nm(emp(c.by),dl)}).`);
  const sealImg=r.status==='approved'?`<img${CO.stamp?' class="co"':''} src="${stampURL(r)}" alt="${CO.stamp?D('ختم الشركة','Company stamp'):D('ختم معتمد','Approved stamp')}">`:`<div class="dc-ph">${rej?D('غير معتمد','Not approved'):D('موضع الختم','Stamp here')}</div>`;
  const seal=`<div class="dc-seal"><p>${sealTxt}</p>${sealImg}</div>`;
 
@@ -1160,7 +1175,7 @@ const RST={sent:['سُلّم','Submitted','ok'],latesent:['سُلّم متأخر
 const rchip=s=>`<span class="hchip ${RST[s][2]}">${L(RST[s][0],RST[s][1])}</span>`;
 const demoTag=x=>x&&x.demo?` <span class="hchip warn">${L('تجريبي','Sample')}</span>`:'';
 function hrPanel(){if(H.key!==hrKey()){hrLoad();return `<p class="note">${L('جارٍ تحميل الملفات…','Loading files…')}</p>`}
- const es=Object.values(S.emps).filter(e=>e.active!==false).sort((a,b)=>String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
+ const rk=e=>{const f=H.files[e.key]||{};return f.demo?2:f.wr?0:1},es=Object.values(S.emps).filter(e=>e.active!==false).sort((a,b)=>rk(a)-rk(b)||String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
  const w=weekOf(now()),wr=es.filter(e=>(H.files[e.key]||{}).wr),sent=wr.filter(e=>{const r=repOf(e.key,w);return r&&r.status==='sent'}).length;
  const unseen=H.reps.filter(r=>r.status==='sent'&&!r.seenAt).length,full=es.filter(e=>hrScore(e.key).pct===100).length;
  const weeks=[];for(let i=7;i>=0;i--)weeks.push(weekOf(now()-i*7*DAY));
@@ -1178,9 +1193,11 @@ function hrOv(m){const e=emp(m.key),f=H.files[m.key]||{},mg=canManage(),sc=hrSco
  const tabs=[['data',L('البيانات والعقد','Details & contract')],['docs',L('المستندات','Documents')],['reps',L('التقارير الأسبوعية','Weekly reports')],['reqs',L('الإجازات والعهد','Leave & custody')]];if(mg)tabs.push(['notes',L('ملاحظات','Notes')]);
  let body='';
  if(tab==='data'){const d=m.d||(m.d=Object.assign({},f));
-  body=`${sc.miss.length?`<div class="hmiss"><b>${L('ينقص الملف:','Missing from the file:')}</b> ${sc.miss.map(esc).join('، ')}</div>`:`<div class="hmiss ok">${L('الملف مكتمل.','The file is complete.')}</div>`}
-  <dl class="kv"><dt>${L('الاسم','Name')}</dt><dd>${esc(e.ar)} · ${esc(e.en)}</dd><dt>${L('الرقم الوظيفي','Employee no.')}</dt><dd class="num">${esc(e.no)}</dd><dt>${L('القسم والمسمى','Department & title')}</dt><dd>${esc(dpt(e))} · ${esc(L(e.tAr,e.tEn||e.tAr))}</dd><dt>${L('الإيميل','Email')}</dt><dd class="num">${esc(m.key)}</dd></dl>
-  <div class="grid2">${HF.map(h=>`<div class="f"><label for="h-${h[0]}">${L(h[1],h[2])}${h[3]?' <em class="rq">*</em>':''}</label>${mg?`<input id="h-${h[0]}" name="${h[0]}" type="${h[4]||'text'}" value="${esc(d[h[0]]==null?'':d[h[0]])}" maxlength="120" ${h[4]==='number'?'step="any" min="0" inputmode="decimal"':''} ${['idNo','iban','mobile','contractNo','pemail','gosi'].includes(h[0])?'dir="ltr"':''}>`:`<div class="ro">${esc(d[h[0]]==null||d[h[0]]===''?'—':d[h[0]])}</div>`}</div>`).join('')}</div>
+  const G=[[L('البيانات الشخصية','Personal details'),['idNo','nat','dob','marital','qual','major']],[L('التواصل والعنوان','Contact & address'),['mobile','pemail','addr']],[L('العقد','Contract'),['contractNo','join','cStart','cEnd','days','hours','leaveDays','gosi']],[L('الأجر والحساب البنكي','Wage & bank account'),['basic','housing','transport','bank','iban']]];
+  const fld=h=>`<div class="f"><label for="h-${h[0]}">${L(h[1],h[2])}${h[3]?' <em class="rq">*</em>':''}</label>${mg?`<input id="h-${h[0]}" name="${h[0]}" type="${h[4]||'text'}" value="${esc(d[h[0]]==null?'':d[h[0]])}" maxlength="120" ${h[4]==='number'?'step="any" min="0" inputmode="decimal"':''} ${['idNo','iban','mobile','contractNo','pemail','gosi'].includes(h[0])?'dir="ltr"':''}>`:`<div class="ro">${esc(d[h[0]]==null||d[h[0]]===''?'—':d[h[0]])}</div>`}</div>`;
+  const tot=(+d.basic||0)+(+d.housing||0)+(+d.transport||0);
+  body=`${sc.miss.length?`<div class="hmiss"><b>${L('ينقص الملف','Missing from the file')} (${sc.miss.length}):</b><span class="hmc">${sc.miss.map(x=>`<i>${esc(x)}</i>`).join('')}</span></div>`:`<div class="hmiss ok">${L('الملف مكتمل.','The file is complete.')}</div>`}
+  ${G.map(g=>`<fieldset class="hgrp"><legend>${g[0]}</legend><div class="grid2">${g[1].map(k=>fld(HF.find(h=>h[0]===k))).join('')}</div>${g[1].includes('basic')?`<p class="note">${L('إجمالي الأجر الشهري','Total monthly wage')}: <b class="num">${fN(tot)}</b> ${L('ريال','SAR')}</p>`:''}</fieldset>`).join('')}
   ${mg?`<label class="hchk"><input type="checkbox" name="wr" ${d.wr?'checked':''}> ${L('مشمول بالتقارير الأسبوعية (يظهر له تبويب «تقريري الأسبوعي»)','Included in weekly reports (shows the “My weekly report” tab)')}</label>`:''}`}
  else if(tab==='docs'){const ds=docsOf(m.key);
   body=`<p class="note">${L('ارفع صورة أو PDF حتى 5 ميجابايت للملف الواحد. الصور تُصغَّر تلقائياً.','Upload an image or PDF, up to 5 MB each. Images are resized automatically.')}</p>
@@ -1194,13 +1211,14 @@ function hrOv(m){const e=emp(m.key),f=H.files[m.key]||{},mg=canManage(),sc=hrSco
  else{const t=m.note==null?(m.note=(H.notes[m.key]||{}).text||''):m.note;
   body=`<p class="note">${L('ملاحظات خاصة بالموارد البشرية. لا يراها الموظف.','Private HR notes. The employee cannot see them.')}</p><textarea id="h-note" rows="9" maxlength="4000">${esc(t)}</textarea>`}
  return `<div class="ov side" data-act="close-bg"><form class="sheet hr-sheet" id="hrform" role="dialog" aria-modal="true" novalidate>
-  <div class="sh-h"><h2>${L('ملف الموظف','Employee file')} · ${esc(nm(e))}${demoTag(f)}</h2><span class="hchip ${sc.pct===100?'ok':'warn'}">${sc.pct}%</span>${x}</div>
+  <div class="sh-h"><h2>${L('ملف الموظف','Employee file')}</h2>${x}</div>
+  <div class="hcard"><span class="hav">${esc((e.ar||'?').trim().charAt(0))}</span><div class="hc-m"><b>${esc(nm(e))}${demoTag(f)}</b><span>${esc(L(e.tAr,e.tEn||e.tAr))} · ${esc(dpt(e))}</span><span class="num">${L('الرقم الوظيفي','No.')} ${esc(e.no)} · ${esc(m.key)}</span><span>${L('المدير المباشر','Line manager')}: ${e.mgr?esc(nm(emp(e.mgr))):`<em class="bad-t">${L('غير محدد','Not set')}</em>`}</span></div><div class="hc-p"><b class="num">${sc.pct}%</b><div class="hbar"><i style="width:${sc.pct}%" class="${sc.pct===100?'ok':sc.pct>=60?'mid':'low'}"></i></div><small>${L('اكتمال الملف','File completeness')}</small></div></div>
   <div class="htabs" role="tablist">${tabs.map(t=>`<button type="button" role="tab" aria-selected="${t[0]===tab}" class="${t[0]===tab?'on':''}" data-act="hr-tab" data-t="${t[0]}">${t[1]}</button>`).join('')}</div>
   <div class="sh-b">${body}</div>
-  <div class="sh-f"><button type="button" class="btn" data-act="hr-zip1">${L('تنزيل الملف كاملاً (ZIP)','Download whole file (ZIP)')}</button>${mg&&(tab==='data'||tab==='notes')?`<button type="submit" class="btn pri">${L('حفظ','Save')}</button>`:''}</div></form></div>`}
+  <div class="sh-f"><button type="button" class="btn" data-act="pp-open" data-t="file" data-key="${esc(m.key)}">${L('نموذج الملف PDF','File form (PDF)')}</button><button type="button" class="btn" data-act="hr-zip1">${L('تنزيل الملف كاملاً (ZIP)','Download whole file (ZIP)')}</button>${mg&&(tab==='data'||tab==='notes')?`<button type="submit" class="btn pri">${L('حفظ','Save')}</button>`:''}</div></form></div>`}
 function repCard(r,mg,m){const li=(a,st)=>(a||[]).filter(x=>x.t).map(x=>`<li>${st&&x.st?`<span class="hchip ${x.st==='done'?'ok':x.st==='late'?'bad':'warn'}">${L(WST[x.st][0],WST[x.st][1])}</span> `:''}${esc(x.t)}</li>`).join('');
  const late=r.status==='sent'&&r.sentAt>weekDue(r.week)+DAY;
- return `<div class="hrep"><div class="hr-h"><b>${L('أسبوع','Week of')} <span class="num">${weekLbl(r.week)}</span></b>${demoTag(r)}${r.status==='sent'?`<span class="hchip ${late?'warn':'ok'}">${L('سُلّم','Submitted')} ${fS(r.sentAt)} ${fT(r.sentAt)}</span>`:rchip('draft')}${r.via?`<span class="hchip warn">${L('من حساب مدير النظام','From admin account')}</span>`:''}</div>
+ return `<div class="hrep"><div class="hr-h"><b>${L('أسبوع','Week of')} <span class="num">${weekLbl(r.week)}</span></b>${demoTag(r)}${r.status==='sent'?`<span class="hchip ${late?'warn':'ok'}">${L('سُلّم','Submitted')} ${fS(r.sentAt)} ${fT(r.sentAt)}</span>`:rchip('draft')}${r.via?`<span class="hchip warn">${L('من حساب مدير النظام','From admin account')}</span>`:''}${r.id?`<button type="button" class="btn sm" data-act="pp-open" data-t="wr" data-id="${esc(r.id)}">PDF</button>`:''}</div>
   <h4>${L('ما أُنجز','Accomplished')}</h4><ul>${li(r.done,1)||'<li>—</li>'}</ul><h4>${L('خطة الأسبوع القادم','Next week’s plan')}</h4><ul>${li(r.plan)||'<li>—</li>'}</ul>
   ${r.block?`<h4>${L('معوّقات أو دعم مطلوب','Blockers or support needed')}</h4><p>${esc(r.block)}</p>`:''}<p class="note">${L('ضغط العمل','Workload')}: ${L(WLOAD[r.load||'normal'][0],WLOAD[r.load||'normal'][1])}</p>
   ${r.reply?`<div class="hreply"><b>${L('رد الموارد البشرية','HR reply')}</b> <small>${fS(r.replyAt)}</small><p>${esc(r.reply)}</p></div>`:''}
@@ -1262,7 +1280,7 @@ async function hrRegisters(){await loadXLSX();const X=window.XLSX,es=Object.valu
  add('اكتمال الملفات',[['الرقم الوظيفي','الاسم','الاكتمال %','الناقص']].concat(es.map(e=>{const s=hrScore(e.key);return [e.no,e.ar,s.pct,s.miss.join('، ')]})),[12,28,11,90]);
  return new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
 async function hrZip(keys,name){toast(L('جارٍ تجهيز الملفات…','Preparing files…'));try{await loadZip();const z=new window.JSZip();
-  for(const k of keys){const e=emp(k),dir=z.folder(safeName(e.no+' - '+e.ar));dir.file('ملف الموظف.html',hrSheetHTML(k));const used={};for(const d of docsOf(k)){const kn=(HK.find(x=>x[0]===d.kind)||HK[8])[1];let n=safeName(kn+' - '+d.name);if(used[n]){const i=n.lastIndexOf('.');n=(i>0?n.slice(0,i):n)+' ('+(++used[n])+')'+(i>0?n.slice(i):'')}else used[n]=1;dir.folder('المستندات').file(n,await hrBlob(d))}}
+  for(const k of keys){const e=emp(k),dir=z.folder(safeName(e.no+' - '+e.ar));dir.file('ملف الموظف.html',hrSheetHTML(k));if(window.html2canvas&&window.jspdf){try{dir.file('ملف الموظف.pdf',await ppBlob({t:'file',key:k}));const rf=dir.folder('التقارير الأسبوعية');for(const r of repsOf(k).filter(x=>x.status==='sent'))rf.file('تقرير '+r.week+'.pdf',await ppBlob({t:'wr',id:r.id}))}catch(e){console.error(e)}}const used={};for(const d of docsOf(k)){const kn=(HK.find(x=>x[0]===d.kind)||HK[8])[1];let n=safeName(kn+' - '+d.name);if(used[n]){const i=n.lastIndexOf('.');n=(i>0?n.slice(0,i):n)+' ('+(++used[n])+')'+(i>0?n.slice(i):'')}else used[n]=1;dir.folder('المستندات').file(n,await hrBlob(d))}}
   if(keys.length>1&&canManage())z.file('سجلات المنشأة.xlsx',await hrRegisters());
   await saveFile(name,await z.generateAsync({type:'blob',compression:'DEFLATE'}));toast(L('نزّل الملف. احفظه في مكان آمن.','Downloaded. Keep it somewhere safe.'))}catch(e){console.error(e);toast(L('تعذّر تجهيز الملف.','Could not prepare the file.'))}}
 /* sample files: two fictitious employees, clearly marked */
@@ -1312,6 +1330,45 @@ async function hrBulk(files){const fs=[...files||[]];if(!fs.length)return;let ok
   if(docsOf(k).some(d=>d.kind==='contract'&&d.name===f.name)){ok++;continue}
   try{const b=await blob2b64(f),parts=b64chunks(b,700000);await BE.hrPutDoc({emp:k,kind:'contract',name:f.name.slice(0,120),type:f.type,size:f.size,n:parts.length,at:now(),by:S.user},parts);ok++}catch(e){console.error(e);miss.push(f.name)}}
  toast(L(`رُفع ${ok} عقداً.`,`${ok} contracts uploaded.`)+(miss.length?' '+L('لم يُطابَق: ','Not matched: ')+miss.join('، '):''));hrLoad(true)}
+
+function paperShell(o){return `<div class="paper${o.lvl?' '+o.lvl:''}" dir="rtl" lang="ar">${o.wm?`<div class="dc-wm">${o.wm}</div>`:''}
+  <div class="dc-head lh"><div class="en"><b>${esc(CO.n1En)}</b><span class="s2">${esc(CO.n2En)}</span><span class="ids">${CO.vat?'VAT No.: '+esc(CO.vat):''}${CO.vat&&CO.cr?' &nbsp; ':''}${CO.cr?'C.R. '+esc(CO.cr):''}</span></div><img src="${LOGO}" alt="UTiTCo"><div class="ar"><b>${esc(CO.n1Ar)}</b><span class="s2">${esc(CO.n2Ar)}</span><span class="ids">${CO.vat?'الرقم الضريبي: <span class="ltr">'+esc(CO.vat)+'</span>':''}${CO.vat&&CO.cr?' &nbsp; ':''}${CO.cr?'س.ت: <span class="ltr">'+esc(CO.cr)+'</span>':''}</span></div></div>
+  <div class="dc-rule"><i></i></div><div class="dc-rule2"></div>
+  <div class="dc-meta"><span><b>الرقم المرجعي:</b> <span class="num">${esc(o.ref)}</span></span><span><b>التاريخ:</b> ${fG(o.date,'ar')}م &nbsp;|&nbsp; ${fH(o.date,'ar')}</span></div>
+  <div class="dc-title"><h2>${o.title}</h2><span style="letter-spacing:.14em">${o.en}</span></div>
+  <div class="dc-main">${o.main}</div>
+  <div class="dc-foot"><div><div><b>مستند صادر إلكترونياً</b> من نظام الطلبات الداخلية بتاريخ <span class="ltr">${fS(now())} ${fT(now())}</span>. ${o.foot||''}</div></div><span class="pg">صفحة 1 من 1</span></div>
+  <div class="dc-lh"><div class="en">${[CO.f1En,CO.f2En,CO.f3En].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}${CO.web?`<em>${esc(CO.web)}</em>`:''}</div><div class="ar">${[CO.f1Ar,CO.f2Ar,CO.f3Ar].filter(Boolean).map(x=>`<span>${esc(x)}</span>`).join('')}${CO.mail?`<em class="ltr">${esc(CO.mail)}</em>`:''}</div></div>
+ </div>`}
+const ppKv=pairs=>{const rows=[];let c=[];pairs.forEach(p=>{if(p[2]){if(c.length){rows.push(c[0]+'<th></th><td></td>');c=[]}rows.push(`<th>${p[0]}</th><td colspan="3">${p[1]}</td>`)}else{c.push(`<th>${p[0]}</th><td>${p[1]}</td>`);if(c.length===2){rows.push(c.join(''));c=[]}}});if(c.length)rows.push(c[0]+'<th></th><td></td>');return `<table class="dc-t"><colgroup><col style="width:17%"><col style="width:33%"><col style="width:17%"><col style="width:33%"></colgroup>${rows.map(x=>`<tr>${x}</tr>`).join('')}</table>`};
+const ppSec=(t,inner)=>`<section><div class="dc-h">${t}</div>${inner}</section>`,ppV=v=>esc(v==null||v===''?'—':v),ppL=v=>`<span class="ltr">${ppV(v)}</span>`;
+function wrPaper(r,lvl){const e=emp(r.emp),sent=r.status==='sent',late=sent&&r.sentAt>weekDue(r.week)+DAY,done=(r.done||[]).filter(x=>x.t),plan=(r.plan||[]).filter(x=>x.t);
+ const cnt=k=>done.filter(x=>(x.st||'done')===k).length;
+ const main=ppSec('بيانات الموظف',ppKv([['الاسم',esc(e.ar)],['الرقم الوظيفي',ppL(e.no)],['القسم',esc(e.deptAr)],['المسمى الوظيفي',esc(e.tAr)],['المدير المباشر',e.mgr?esc(emp(e.mgr).ar):'—'],['أسبوع العمل',`<span class="ltr">${weekLbl(r.week)}</span>`]]))
+  +ppSec(`ما أُنجز خلال الأسبوع <small class="pp-c">منجز ${cnt('done')} · جارٍ ${cnt('prog')} · متأخر ${cnt('late')}</small>`,`<table class="dc-t"><colgroup><col style="width:6%"><col style="width:78%"><col style="width:16%"></colgroup><thead><tr><th class="c">م</th><th>البند</th><th class="c">الحالة</th></tr></thead><tbody>${done.map((x,i)=>`<tr><td class="c">${i+1}</td><td>${esc(x.t)}</td><td class="c"><span class="${x.st==='late'?'no-t':x.st==='prog'?'pp-w':'ok-t'}">${WST[x.st||'done'][0]}</span></td></tr>`).join('')||'<tr><td class="c">—</td><td>لا توجد بنود</td><td></td></tr>'}</tbody></table>`)
+  +ppSec('خطة الأسبوع القادم',`<table class="dc-t"><colgroup><col style="width:6%"><col style="width:94%"></colgroup><thead><tr><th class="c">م</th><th>البند</th></tr></thead><tbody>${plan.map((x,i)=>`<tr><td class="c">${i+1}</td><td>${esc(x.t)}</td></tr>`).join('')||'<tr><td class="c">—</td><td>لا توجد بنود</td></tr>'}</tbody></table>`)
+  +ppSec('المعوّقات والدعم المطلوب',`<div class="dc-box">${r.block?esc(r.block):'لا يوجد'}<div style="margin-top:3px"><b>ضغط العمل خلال الأسبوع:</b> ${WLOAD[r.load||'normal'][0]}</div></div>`)
+  +ppSec('التقديم والمراجعة',`<table class="dc-t dc-appr"><colgroup><col style="width:22%"><col style="width:28%"><col style="width:50%"></colgroup><thead><tr><th>الإجراء</th><th>الاسم</th><th class="c">التوثيق الإلكتروني (التاريخ والوقت)</th></tr></thead><tbody>
+   <tr><td>تقديم التقرير</td><td>${esc(e.ar)}</td><td class="c">${sent?`<span class="eap">قُدِّم إلكترونياً <span class="ltr">${fS(r.sentAt)}</span> الساعة <span class="ltr">${fT(r.sentAt)}</span>${late?'<small>بعد الموعد المحدد</small>':''}${r.via?'<small>نُفّذ من حساب مدير النظام للتجربة</small>':''}</span>`:'مسودة لم تُرسَل'}</td></tr>
+   <tr><td>مراجعة الموارد البشرية</td><td>${r.seenAt?esc(emp(r.seenBy).ar):'—'}</td><td class="c">${r.seenAt?`<span class="eap">روجع إلكترونياً <span class="ltr">${fS(r.seenAt)}</span> الساعة <span class="ltr">${fT(r.seenAt)}</span></span>`:'لم يُراجَع بعد'}</td></tr></tbody></table>${r.reply?`<div class="dc-box" style="margin-top:6px"><b>ملاحظات المراجِع:</b> ${esc(r.reply)}</div>`:''}`);
+ return paperShell({lvl,ref:'WR-'+e.no+'-'+r.week.replace(/-/g,''),date:sent?r.sentAt:now(),title:'التقرير الأسبوعي للعمل',en:'WEEKLY WORK REPORT',main,wm:r.demo?'نموذج تجريبي':sent?'':'مسودة',foot:'وقت التقديم يسجّله النظام ولا يمكن تعديله، والتقرير لا يُعدَّل بعد إرساله.'})}
+function filePaper(k,lvl){const e=emp(k),f=H.files[k]||{},sc=hrScore(k),ds=docsOf(k),tot=(+f.basic||0)+(+f.housing||0)+(+f.transport||0),sar=v=>v?`<span class="ltr">${fN(+v)}</span> ريال`:'—';
+ const rq=S.reqs.filter(r=>r.emp===k&&r.status==='approved'),n=t=>rq.filter(r=>r.type===t).length,rs=repsOf(k).filter(r=>r.status==='sent');
+ const main=ppSec('البيانات الأساسية',ppKv([['الاسم',esc(e.ar)],['الاسم بالإنجليزية',ppL(e.en)],['الرقم الوظيفي',ppL(e.no)],['رقم الهوية / الإقامة',ppL(f.idNo)],['القسم',esc(e.deptAr)],['المسمى الوظيفي',esc(e.tAr)],['المدير المباشر',e.mgr?esc(emp(e.mgr).ar):'—'],['الجنسية',ppV(f.nat)],['تاريخ الميلاد',ppL(f.dob)],['الحالة الاجتماعية',ppV(f.marital)],['المؤهل العلمي',ppV(f.qual)],['التخصص',ppV(f.major)],['رقم الجوال',ppL(f.mobile)],['البريد الإلكتروني',ppL(k)],['العنوان الوطني',ppV(f.addr),1]]))
+  +ppSec('العقد والأجر',ppKv([['رقم العقد (قوى)',ppL(f.contractNo)],['تاريخ المباشرة',ppL(f.join||e.hire)],['بداية العقد',ppL(f.cStart)],['نهاية العقد',ppL(f.cEnd)],['أيام العمل الأسبوعية',ppL(f.days)],['ساعات العمل اليومية',ppL(f.hours)],['الأجر الأساسي',sar(f.basic)],['بدل السكن',sar(f.housing)],['بدل النقل',sar(f.transport)],['إجمالي الأجر الشهري',`<b>${sar(tot)}</b>`],['البنك',ppV(f.bank)],['الآيبان',ppL(f.iban)],['الإجازة السنوية',f.leaveDays?ppL(f.leaveDays)+' يوماً':'—'],['رقم المشترك في التأمينات',ppL(f.gosi)]]))
+  +ppSec(`المستندات المحفوظة في الملف <small class="pp-c">اكتمال الملف ${sc.pct}%</small>`,`<table class="dc-t"><colgroup><col style="width:6%"><col style="width:34%"><col style="width:14%"><col style="width:30%"><col style="width:16%"></colgroup><thead><tr><th class="c">م</th><th>المستند</th><th class="c">الحالة</th><th>اسم الملف</th><th class="c">تاريخ الحفظ</th></tr></thead><tbody>${HK.filter(x=>x[3]||ds.some(d=>d.kind===x[0])).map((x,i)=>{const l=ds.filter(d=>d.kind===x[0]);return `<tr><td class="c">${i+1}</td><td>${x[1]}</td><td class="c">${l.length?'<span class="ok-t">موجود</span>':'<span class="no-t">ناقص</span>'}</td><td>${l.length?esc(l[0].name)+(l.length>1?` (+${l.length-1})`:''):'—'}</td><td class="c">${l.length?`<span class="ltr">${fS(l[0].at)}</span>`:'—'}</td></tr>`}).join('')}</tbody></table>`)
+  +ppSec('ملخص السجل الوظيفي',ppKv([['رصيد الإجازة السنوية',`<span class="ltr">${balance(k)} / ${ANNUAL}</span> يوماً`],['إجازات معتمدة',ppL(n('leave'))],['عهد مستلمة',ppL(n('custody'))],['سلف معتمدة',ppL(n('advance'))],['تقارير أسبوعية مسلّمة',ppL(rs.length)],['منها في الموعد',ppL(rs.filter(r=>r.sentAt<=weekDue(r.week)+DAY).length)]]));
+ return paperShell({lvl,ref:'EF-'+e.no,date:now(),title:'ملف الموظف',en:'EMPLOYEE FILE',main,wm:f.demo?'نموذج تجريبي':'',foot:'البيانات كما هي مسجّلة في النظام وقت الاستخراج، والمستندات الأصلية محفوظة في الملف الإلكتروني للموظف.'})}
+const ppCache={};
+function ppMake(m,lv){if(m.t==='wr'){const r=H.reps.find(x=>x.id===m.id);return r?wrPaper(r,lv):''}return S.emps[m.key]?filePaper(m.key,lv):''}
+function ppHTML(m){const key=m.t+'|'+(m.id||m.key);if(ppCache[key]!=null)return ppMake(m,ppCache[key]);const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:794px;height:1123px;overflow:hidden;visibility:hidden';document.body.appendChild(host);let pick='tight dense';
+ for(const lv of ['','tight','tight dense']){host.innerHTML=ppMake(m,lv);const mn=host.querySelector('.dc-main');if(!mn)break;const kids=[...mn.children],gap=parseFloat(getComputedStyle(mn).rowGap)||0;if(kids.reduce((a,c)=>a+c.offsetHeight,0)+gap*(kids.length-1)<=mn.clientHeight-10){pick=lv;break}}
+ host.remove();return ppMake(m,ppCache[key]=pick)}
+function ppName(m){if(m.t==='wr'){const r=H.reps.find(x=>x.id===m.id),e=emp(r.emp);return safeName('التقرير-الأسبوعي-'+e.no+'-'+e.ar+'-'+r.week)+'.pdf'}const e=emp(m.key);return safeName('ملف-الموظف-'+e.no+'-'+e.ar)+'.pdf'}
+function ppView(m){const h=ppHTML(m);if(!h){S.modal=null;return ''}return `<div class="ov full"><div class="sheet" role="dialog" aria-modal="true" aria-label="${L('النموذج الرسمي','Official form')}"><div class="sh-h docbar"><h2>${m.t==='wr'?L('التقرير الأسبوعي','Weekly report'):L('ملف الموظف','Employee file')}</h2><button class="btn pri" data-act="pp-pdf"${m.busy?' disabled':''}>${IC.dl}${m.busy?L('جارٍ التجهيز…','Preparing…'):L('تحميل PDF','Download PDF')}</button><button class="x" data-act="pp-close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div><div class="docstage" id="stage"><div class="fit" id="fit">${h}</div></div></div></div>`}
+async function ppBlob(m){const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:794px;height:1123px;overflow:hidden';document.body.appendChild(host);host.innerHTML=ppHTML(m);
+ try{if(document.fonts&&document.fonts.ready)await document.fonts.ready;await Promise.all([...host.querySelectorAll('img')].map(i=>i.decode?i.decode().catch(()=>{}):0));const canvas=await window.html2canvas(host.firstElementChild,{scale:2.5,backgroundColor:'#ffffff',logging:false,width:794,height:1123,windowWidth:1200});const pdf=new window.jspdf.jsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});pdf.setProperties({title:ppName(m).replace(/\.pdf$/,''),author:coFull('en')});pdf.addImage(canvas.toDataURL('image/jpeg',.93),'JPEG',0,0,210,297,undefined,'FAST');return pdf.output('blob')}finally{host.remove()}}
+async function ppPDF(){const m=S.modal;if(!m||m.kind!=='pp'||m.busy)return;if(!window.html2canvas||!window.jspdf){toast(L('تعذّر تحميل مكتبة إنشاء الـPDF. تحقق من الاتصال ثم أعد فتح الصفحة.','The PDF library did not load. Check your connection and reopen the page.'));return}m.busy=true;renderOv();try{const n=ppName(m);await saveFile(n,await ppBlob(m));toast(L('حُفظ الملف: ','Saved: ')+n)}catch(e){console.error(e);toast(L('تعذّر إنشاء ملف الـPDF. حاول مرة أخرى.','The PDF could not be created. Try again.'))}m.busy=false;if(S.modal===m)renderOv()}
 function hrRefresh(){hrRead();wrRead();render()}
 function myFilePanel(){if(H.key!==hrKey()){hrLoad();return ''}const sc=hrScore(S.user);return `<div class="chart"><h3>${L('ملفي الوظيفي','My employee file')}</h3><p class="note">${L('بياناتك وعقدك ومستنداتك المحفوظة لدى الموارد البشرية. تقدر ترفع مستنداتك الناقصة بنفسك.','Your details, contract and documents held by HR. You can upload your own missing documents.')}</p><div class="hbar"><i style="width:${sc.pct}%" class="${sc.pct===100?'ok':sc.pct>=60?'mid':'low'}"></i></div><p class="note">${L('اكتمال الملف','File completeness')}: <b class="num">${sc.pct}%</b>${sc.miss.length?' · '+L('ينقص','missing')+': '+sc.miss.map(esc).join('، '):''}</p><div><button class="btn pri" data-act="hr-open" data-key="${esc(S.user)}">${L('فتح ملفي','Open my file')}</button></div></div>`}
 /* ---------- supplier purchasing (admin + purchasing permission) ---------- */
@@ -1498,7 +1555,7 @@ const ACT={
  close(){const m=S.modal;S.modal=m&&m.kind==='doc'&&m.back?m.back:null;renderOv()},
  'close-bg'(el,ev){if(ev.target===el)ACT.close()},
  async approve(){const m=S.modal,r=S.reqs.find(x=>x.id===m.id);if(!r||m.busy)return;const n=(($('#note')||{}).value||'').trim();m.busy=true;
-  try{const res=await decide(r,true,n);S.modal={kind:'detail',id:r.id};const c=res&&res.next;toast(c?L(`اعتمدت الطلب، وانتقل إلى ${nm(emp(c.by))} (${o2(STAGE[c.key])})`,`Approved. Now with ${nm(emp(c.by))} (${o2(STAGE[c.key])})`):L('اكتمل اعتماد الطلب، والمستند الرسمي جاهز بالختم.','Fully approved. The stamped form is ready.'))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()},
+  try{const res=await decide(r,true,n);S.modal={kind:'detail',id:r.id};const c=res&&res.next;toast(c?L(`اعتمدت الطلب، وانتقل إلى ${nm(emp(c.by))} (${stLbl(c)})`,`Approved. Now with ${nm(emp(c.by))} (${stLbl(c)})`):L('اكتمل اعتماد الطلب، والمستند الرسمي جاهز بالختم.','Fully approved. The stamped form is ready.'))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()},
  async reject(){const m=S.modal,r=S.reqs.find(x=>x.id===m.id);if(!r||m.busy)return;const n=(($('#note')||{}).value||'').trim();if(!n){m.err=true;m.note='';renderOv();const t=$('#note');if(t)t.focus();return}m.busy=true;
   try{await decide(r,false,n);S.modal={kind:'detail',id:r.id};toast(L('رُفض الطلب وسُجّل السبب.','Rejected, and the reason was recorded.'))}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()},
  signin(){S.loginErr=null;render();Promise.resolve().then(()=>BE.signIn()).catch(e=>{const c=e&&e.code;S.loginErr=c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request'?null:c==='auth/popup-blocked'?L('المتصفح منع نافذة الدخول. اسمح بالنوافذ المنبثقة لهذا الموقع ثم حاول.','The browser blocked the sign-in window. Allow pop-ups for this site and try again.'):c==='auth/unauthorized-domain'?L('عنوان هذا الموقع غير مضاف في إعدادات الدخول. راجع مدير النظام.','This site address is not authorised for sign-in. Contact the system admin.'):L('تعذّر تسجيل الدخول. حاول مرة أخرى.','Sign-in failed. Try again.');console.error(e);render()})},
@@ -1516,6 +1573,9 @@ const ACT={
  'wr-del'(el){wrRead();const a=S.wr[el.dataset.a];a.splice(+el.dataset.i,1);if(!a.length)a.push(el.dataset.a==='done'?{t:'',st:'done'}:{t:''});renderApp()},
  'wr-carry'(el){wrRead();const d=S.wr,t=d.carry.splice(+el.dataset.i,1)[0];if(d.done.length===1&&!d.done[0].t.trim())d.done[0].t=t;else d.done.push({t,st:'done'});renderApp()},
  'wr-save'(){wrSave(false)},
+ 'pp-open'(el){hrRead();S.modal={kind:'pp',t:el.dataset.t,id:el.dataset.id,key:el.dataset.key,back:S.modal};renderOv()},
+ 'pp-close'(){S.modal=S.modal.back||null;renderOv()},
+ 'pp-pdf'(){ppPDF()},
  'wt-to'(el){wrRead();S.wtTo=el.dataset.to;renderApp()},
  'wt-add'(el){wrRead();const p=wtList()[Math.min(S.wtP||0,wtList().length-1)],t=p.name+' — '+p.tasks[+el.dataset.j],to=S.wtTo||'done',a=S.wr[to];if(a.some(x=>x.t.trim()===t)){toast(L('البند مضاف من قبل.','Already added.'));return}const e=a.find(x=>!x.t.trim());if(e)e.t=t;else a.push(to==='done'?{t,st:'done'}:{t});renderApp()},
  'wt-edit'(){S.modal={kind:'wt',text:(H.tasks||'').trim()||WT_DEF};renderOv()},
