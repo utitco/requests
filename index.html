@@ -576,6 +576,7 @@ let R={hr:'',fin:'',ceo:''};
 const ghost=k=>({key:k,no:'—',ar:k||'—',en:k||'—',g:'m',deptAr:'—',deptEn:'—',tAr:'—',tEn:'—',hire:'2000-01-01',used:0,mgr:'',active:false});
 const emp=k=>S.emps[k]||ghost(k);
 const allEmps=()=>Object.values(S.emps).filter(e=>e.active!==false);
+const noAcc=k=>!!k&&String(k).indexOf('@')<0,noKey=no=>'noacc-'+String(no==null?'':no).trim().replace(/[^0-9A-Za-z_-]/g,''),keyLbl=k=>noAcc(k)?L('بدون حساب دخول','No sign-in account'):k;
 
 const P=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC={
@@ -911,10 +912,10 @@ function saveErr(e){return e&&e.code==='permission-denied'?L('ليست لديك 
 
 /* ---------- employees + settings (HR / admin) ---------- */
 function empsPanel(){const l=Object.values(S.emps).sort((a,b)=>String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
- return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn sm" data-act="imp-tpl">${L('قالب Excel','Excel template')}</button><label class="btn sm" for="impfile" tabindex="0">${L('استيراد من Excel','Import from Excel')}</label><input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
+ return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته. من لا يحتاج الدخول يُضاف بدون إيميل ويبقى له ملف عند الموارد البشرية، وإذا أضفت إيميله لاحقاً صار له حساب.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn sm" data-act="imp-tpl">${L('قالب Excel','Excel template')}</button><label class="btn sm" for="impfile" tabindex="0">${L('استيراد من Excel','Import from Excel')}</label><input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
  ${l.length?`<div class="rows emps"><div class="rhead"><span>${L('الرقم الوظيفي','Employee no.')}</span><span>${L('الاسم','Name')}</span><span>${L('القسم والمسمى','Department & title')}</span><span>${L('المدير المباشر','Line manager')}</span><span>${L('الحالة','Status')}</span></div>
  ${l.map(e=>{const tags=[];if(e.key===R.hr)tags.push(o2(STAGE.hr));if(e.key===R.fin)tags.push(o2(STAGE.fin));if(e.key===R.ceo)tags.push(L('الإدارة العليا','Executive'));if(e.admin)tags.push(L('مدير نظام','Admin'));if(e.purch)tags.push(L('مشتريات','Purchasing'));
-  return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(e.key)}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}${realOwner()&&!S.as&&e.key!==S.user&&e.active!==false?`<span class="asbtn" data-act="as-go" data-key="${esc(e.key)}" role="button">${L('دخول بحسابه','Use account')}</span>`:''}</span></button>`}).join('')}</div>`
+  return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(keyLbl(e.key))}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}${realOwner()&&!S.as&&e.key!==S.user&&e.active!==false&&!noAcc(e.key)?`<span class="asbtn" data-act="as-go" data-key="${esc(e.key)}" role="button">${L('دخول بحسابه','Use account')}</span>`:''}</span></button>`}).join('')}</div>`
  :`<div class="rows"><div class="empty"><b>${L('لا يوجد موظفون بعد','No employees yet')}</b>${L('اضغط «إضافة موظف» وابدأ بنفسك.','Use “Add employee” and start with yourself.')}</div></div>`}`}
 /* ----- Excel import ----- */
 const IMP=[['email','الإيميل','email'],['ar','الاسم بالعربي','name arabic'],['en','الاسم بالإنجليزي','name english'],['no','الرقم الوظيفي','employee no'],['deptAr','القسم بالعربي','department arabic'],['deptEn','القسم بالإنجليزي','department english'],['tAr','المسمى بالعربي','title arabic'],['tEn','المسمى بالإنجليزي','title english'],['hire','تاريخ التعيين','hire date'],['g','الجنس','gender'],['mgr','إيميل المدير المباشر','manager email'],['used','أيام الإجازة المستخدمة','leave days used'],['sal','الراتب','salary']];
@@ -940,43 +941,45 @@ async function importFile(file){if(!file)return;let rows;
  const body=rows.slice(hi+1).map((r,i)=>[r,hi+2+i]).filter(x=>x[0].some(c=>String(c).trim()!==''));
  if(body.length>500){toast(L('الحد الأقصى 500 صف في الملف الواحد.','At most 500 rows per file.'));return}
  const inFile={};body.forEach(x=>{inFile[str(x[0],'email').toLowerCase()]=1});
- body.forEach(x=>{const r=x[0],n=x[1],key=str(r,'email').toLowerCase(),bad=m=>errs.push({n,msg:m});
-  if(!/^[^@\s]+@[^@\s]+$/.test(key)||!key.endsWith('@'+DOMAIN))return bad(L(`الإيميل يجب أن ينتهي بـ ‎@${DOMAIN}`,`Email must end in @${DOMAIN}`));
-  if(seen[key])return bad(L('الإيميل مكرر في الملف','Email is repeated in the file'));
-  const ar=str(r,'ar'),no=str(r,'no'),deptAr=str(r,'deptAr'),tAr=str(r,'tAr'),miss=[];if(!ar)miss.push(IMP[1][1]);if(!no)miss.push(IMP[3][1]);if(!deptAr)miss.push(IMP[4][1]);
+ body.forEach(x=>{const r=x[0],n=x[1],em=str(r,'email').toLowerCase(),no0=str(r,'no'),bad=m=>errs.push({n,msg:m});let key=em;
+  if(!em){if(noKey(no0).length<7)return bad(L('صف بدون إيميل: اكتب الرقم الوظيفي ليُضاف الموظف بدون حساب دخول','Row without email: an employee number is needed to add them without an account'));const ex=Object.values(S.emps).find(e=>!noAcc(e.key)&&String(e.no)===no0);key=ex?ex.key:noKey(no0)}
+  else if(!/^[^@\s]+@[^@\s]+$/.test(key)||!key.endsWith('@'+DOMAIN))return bad(L(`الإيميل يجب أن ينتهي بـ ‎@${DOMAIN}`,`Email must end in @${DOMAIN}`));
+  if(seen[key])return bad(L('الإيميل أو الرقم الوظيفي مكرر في الملف','Email or employee number is repeated in the file'));
+  const ar=str(r,'ar'),no=str(r,'no'),deptAr=str(r,'deptAr'),tAr=str(r,'tAr'),miss=[];if(!ar)miss.push(IMP[1][1]);if(!no)miss.push(IMP[3][1]);
   if(miss.length)return bad(L('حقول ناقصة: ','Missing: ')+miss.join('، '));
+  const prev=em&&!S.emps[key]?Object.values(S.emps).find(e=>noAcc(e.key)&&String(e.no)===no):null;if(prev&&!ownerOnly())return bad(L('فتح حساب لموظف مسجَّل بدون حساب يتم من حساب مدير النظام','Opening an account for a no-account employee is done from the system admin account'));
   const hire=impDate(cell(r,'hire'));if(!hire&&str(r,'hire'))return bad(L('تاريخ التعيين ناقص أو بصيغة غير مفهومة (اكتبه مثل 2021-03-14)','Hire date is missing or unreadable (write it like 2021-03-14)'));
   const gv=impNorm(cell(r,'g')),g=['انثي','f','female','انثى'].includes(gv)?'f':['ذكر','m','male',''].includes(gv)?'m':null;if(!g)return bad(L('الجنس: اكتب ذكر أو أنثى','Gender: write male or female'));
   const mgr=str(r,'mgr').toLowerCase();if(mgr&&mgr===key)return bad(L('الموظف مدير لنفسه','Employee is their own manager'));if(mgr&&!inFile[mgr]&&!S.emps[mgr])return bad(L('إيميل المدير المباشر غير موجود في الملف ولا في النظام','Manager email is not in the file or the system'));
-  const used=Math.max(0,Math.round(+cell(r,'used')||0)),sv=String(cell(r,'sal')).trim(),old=S.emps[key];
-  const data={ar,en:str(r,'en')||ar,no,deptAr,deptEn:str(r,'deptEn'),tAr,tEn:str(r,'tEn')||tAr,hire,g,mgr,used};if(!old)data.active=true;if(old&&!tAr){delete data.tAr;delete data.tEn}if(old&&!hire)delete data.hire;
+  const used=Math.max(0,Math.round(+cell(r,'used')||0)),sv=String(cell(r,'sal')).trim(),old=S.emps[key]||prev;
+  const data={ar,en:str(r,'en')||ar,no,deptAr,deptEn:str(r,'deptEn'),tAr,tEn:str(r,'tEn')||tAr,hire,g,mgr,used};if(!old)data.active=true;if(old&&!tAr){delete data.tAr;delete data.tEn}if(old&&!hire)delete data.hire;if(old&&!deptAr){delete data.deptAr;delete data.deptEn}if(old&&String(cell(r,'used')).trim()==='')delete data.used;
   const file={};let fbad='';HF.forEach(h=>{if(map[h[0]]==null)return;const v=cell(r,h[0]);if(v==null||String(v).trim()==='')return;if(h[4]==='date'){const dv=impDate(v);if(!dv)fbad=h[1];else file[h[0]]=dv}else if(h[4]==='number'){const nv=+String(v).replace(/,/g,'');if(!(nv>=0))fbad=h[1];else file[h[0]]=nv}else file[h[0]]=String(v).trim().slice(0,120)});
   if(fbad)return bad(L(`قيمة غير مفهومة في عمود «${fbad}» (التواريخ ميلادية مثل 2021-03-14، والمبالغ أرقام فقط)`,`Unreadable value in column “${fbad}” (dates Gregorian like 2021-03-14, amounts as numbers only)`));
   if(map.wr!=null){const wv=impNorm(cell(r,'wr'));if(wv)file.wr=['نعم','yes','y','1','true'].includes(wv)}
   const tot=(+file.basic||0)+(+file.housing||0)+(+file.transport||0);
-  seen[key]=1;items.push({key,data,sal:canSeeSal()&&sv!==''&&+sv>0?Math.round(+sv):(canSeeSal()&&tot>0?Math.round(tot):undefined),isNew:!old,file:Object.keys(file).length?file:null})});
+  seen[key]=1;items.push({key,from:prev?prev.key:null,data,sal:canSeeSal()&&sv!==''&&+sv>0?Math.round(+sv):(canSeeSal()&&tot>0?Math.round(tot):undefined),isNew:!old,file:Object.keys(file).length?file:null})});
  S.modal={kind:'imp',items,errs,name:file.name};renderOv()}
 function impView(m){const nw=m.items.filter(i=>i.isNew).length,up=m.items.length-nw;
  return `<div class="ov mid" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true">
   <div class="sh-h"><h2>${L('استيراد الموظفين','Import employees')}</h2><button type="button" class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div>
   <div class="sh-b"><p class="note num">${esc(m.name)}</p>
-   <div class="live"><span>${L('جاهز للاستيراد','Ready to import')}: <b class="num">${m.items.length}</b></span><span>${L('جديد','New')}: <b class="num">${nw}</b></span><span>${L('تحديث لموجود','Updates')}: <b class="num">${up}</b></span><span>${L('معها بيانات ملف','With file data')}: <b class="num">${m.items.filter(i=>i.file).length}</b></span><span>${L('صفوف فيها أخطاء','Rows with errors')}: <b class="num">${m.errs.length}</b></span></div>
+   <div class="live"><span>${L('جاهز للاستيراد','Ready to import')}: <b class="num">${m.items.length}</b></span><span>${L('جديد','New')}: <b class="num">${nw}</b></span><span>${L('تحديث لموجود','Updates')}: <b class="num">${up}</b></span><span>${L('بدون حساب دخول','No account')}: <b class="num">${m.items.filter(i=>noAcc(i.key)).length}</b></span><span>${L('معها بيانات ملف','With file data')}: <b class="num">${m.items.filter(i=>i.file).length}</b></span><span>${L('صفوف فيها أخطاء','Rows with errors')}: <b class="num">${m.errs.length}</b></span></div>
    ${m.errs.length?`<div class="sec"><h3>${L('صفوف لن تُستورد (صحّحها في الملف ثم أعد الاستيراد)','Rows that will be skipped (fix them in the file and import again)')}</h3><table class="mini"><tbody>${m.errs.slice(0,15).map(e=>`<tr><td class="num">${L('صف','Row')} ${e.n}</td><td>${esc(e.msg)}</td></tr>`).join('')}</tbody></table>${m.errs.length>15?`<p class="note">${L('وأخطاء أخرى: ','More errors: ')}<span class="num">${m.errs.length-15}</span></p>`:''}</div>`:''}
-   ${m.items.length?`<div class="sec"><h3>${L('معاينة','Preview')}</h3><div class="scroll-x"><table class="mini"><thead><tr><th>${L('الإيميل','Email')}</th><th>${L('الاسم','Name')}</th><th>${L('القسم','Department')}</th><th>${L('المدير','Manager')}</th></tr></thead><tbody>${m.items.slice(0,8).map(i=>`<tr><td class="num">${esc(i.key)}</td><td>${esc(i.data.ar)}</td><td>${esc(i.data.deptAr)}</td><td class="num">${esc(i.data.mgr||'—')}</td></tr>`).join('')}</tbody></table></div>${m.items.length>8?`<p class="note">${L('والباقي: ','And more: ')}<span class="num">${m.items.length-8}</span></p>`:''}</div>`:`<p>${L('لا توجد صفوف صالحة للاستيراد.','No valid rows to import.')}</p>`}
+   ${m.items.length?`<div class="sec"><h3>${L('معاينة','Preview')}</h3><div class="scroll-x"><table class="mini"><thead><tr><th>${L('الإيميل','Email')}</th><th>${L('الاسم','Name')}</th><th>${L('القسم','Department')}</th><th>${L('المدير','Manager')}</th></tr></thead><tbody>${m.items.slice(0,8).map(i=>`<tr><td class="num">${esc(keyLbl(i.key))}${i.from?' ← '+L('فتح حساب','account opened'):''}</td><td>${esc(i.data.ar)}</td><td>${esc(i.data.deptAr)}</td><td class="num">${esc(i.data.mgr||'—')}</td></tr>`).join('')}</tbody></table></div>${m.items.length>8?`<p class="note">${L('والباقي: ','And more: ')}<span class="num">${m.items.length-8}</span></p>`:''}</div>`:`<p>${L('لا توجد صفوف صالحة للاستيراد.','No valid rows to import.')}</p>`}
   </div>
   <div class="sh-f"><button type="button" class="btn" data-act="close">${L('إلغاء','Cancel')}</button>${m.items.length?`<button type="button" class="btn pri" data-act="imp-go"${m.busy?' disabled':''}>${L('استيراد','Import')} <span class="num">${m.items.length}</span></button>`:''}</div>
  </div></div>`}
 async function doImport(){const m=S.modal;if(!m||m.kind!=='imp'||m.busy)return;m.busy=true;renderOv();const n=m.items.length;
- try{await BE.importEmployees(m.items);let nf=0;if(canManage())for(const it of m.items){if(!it.file)continue;const f=Object.assign({},it.file,{updatedAt:now()});if(f.wr&&!((H.files||{})[it.key]||{}).wrSince)f.wrSince=weekOf(now());await BE.hrSaveFile(it.key,f);nf++}S.modal=null;toast(L(`استُورد ${n} موظف`,`Imported ${n} employees`)+(nf?L(`، وعُبّئت ملفات ${nf} منهم.`,`, and filled ${nf} employee files.`):'.'));if(nf)hrLoad(true)}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()}
+ try{for(const it of m.items)if(it.from)await BE.empMove(it.from,it.key);await BE.importEmployees(m.items);let nf=0;if(canManage())for(const it of m.items){if(!it.file)continue;const f=Object.assign({},it.file,{updatedAt:now()});if(f.wr&&!((H.files||{})[it.key]||{}).wrSince)f.wrSince=weekOf(now());await BE.hrSaveFile(it.key,f);nf++}S.modal=null;toast(L(`استُورد ${n} موظف`,`Imported ${n} employees`)+(nf?L(`، وعُبّئت ملفات ${nf} منهم.`,`, and filled ${nf} employee files.`):'.'));if(nf)hrLoad(true)}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()}
 function blankEmp(){return {email:'',ar:'',en:'',no:'',deptAr:'',deptEn:'',tAr:'',tEn:'',hire:iso(now()),g:'m',mgr:'',used:'0',sal:'',active:'yes',admin:'no',purch:'no'}}
 function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  const inp=(n,type,v,ex)=>`<input type="${type}" id="f-${n}" name="${n}" value="${esc(v)}"${inv(n)}${type==='text'?' maxlength="80"':''} ${ex||''}>`;
  const sel=(n,opts,v)=>`<select id="f-${n}" name="${n}">${opts.map(o=>`<option value="${esc(o[0])}"${String(v)===String(o[0])?' selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
- const mgrs=[['','—']].concat(allEmps().filter(e=>e.key!==m.key).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)]));
+ const mgrs=[['','—']].concat(allEmps().filter(e=>e.key!==m.key&&!noAcc(e.key)).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)]));
  return `<div class="ov mid" data-act="close-bg"><form class="sheet" id="eform" role="dialog" aria-modal="true" novalidate>
   <div class="sh-h"><h2>${m.key?L('تعديل بيانات موظف','Edit employee'):L('إضافة موظف','Add employee')}</h2><button type="button" class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div>
   <div class="sh-b"><div class="grid2">
-   ${fld(m,'email',L('إيميل الشركة','Company email'),inp('email','text',d.email,(m.key?'disabled ':'')+`placeholder="name@${DOMAIN}" dir="ltr"`),true,m.key?L('الإيميل لا يتغير بعد الإضافة.','The email cannot change after adding.'):'')}
+   ${fld(m,'email',L('إيميل الشركة','Company email'),inp('email','text',d.email,(m.key&&!noAcc(m.key)?'disabled ':'')+`placeholder="name@${DOMAIN}" dir="ltr"`),true,m.key&&!noAcc(m.key)?L('الإيميل لا يتغير بعد الإضافة.','The email cannot change after adding.'):m.key?L('هذا الموظف بدون حساب دخول. اكتب إيميل الشركة هنا إذا أردت فتح حساب له.','This employee has no sign-in account. Enter a company email here to open one.'):L('اتركه فارغاً لموظف لا يحتاج الدخول إلى النظام.','Leave empty for an employee who does not need to sign in.'))}
    ${fld(m,'ar',L('الاسم بالعربي','Name in Arabic'),inp('ar','text',d.ar))}${fld(m,'en',L('الاسم بالإنجليزي','Name in English'),inp('en','text',d.en,'dir="ltr"'))}
    ${fld(m,'no',L('الرقم الوظيفي','Employee no.'),inp('no','text',d.no,'dir="ltr"'))}${fld(m,'hire',L('تاريخ التعيين','Date of joining'),inp('hire','date',d.hire))}
    ${fld(m,'deptAr',L('القسم بالعربي','Department in Arabic'),inp('deptAr','text',d.deptAr))}${fld(m,'deptEn',L('القسم بالإنجليزي','Department in English'),inp('deptEn','text',d.deptEn,'dir="ltr"'))}
@@ -992,18 +995,19 @@ function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  </form></div>`}
 function readEmp(){const m=S.modal,f=$('#eform');if(!m||m.kind!=='emp'||!f)return;Object.keys(m.d).forEach(k=>{if(f.elements[k])m.d[k]=f.elements[k].value})}
 async function saveEmp(){readEmp();const m=S.modal,d=m.d,e={},req=L('هذا الحقل مطلوب','This field is required');
- const key=(m.key||d.email).trim().toLowerCase();
- if(!m.key){if(!/^[^@\s]+@[^@\s]+$/.test(key)||!key.endsWith('@'+DOMAIN))e.email=L(`اكتب إيميلاً ينتهي بـ ‎@${DOMAIN}`,`Enter an email ending in @${DOMAIN}`);else if(S.emps[key])e.email=L('هذا الإيميل مضاف من قبل','This email is already added')}
- ['ar','en','no','deptAr','tAr','hire'].forEach(k=>{if(!String(d[k]).trim())e[k]=req});
+  const em=String(d.email||'').trim().toLowerCase(),conv=m.key&&noAcc(m.key)&&em?em:'';let key=m.key||em;
+  if(!m.key&&!em){key=noKey(d.no);if(key.length>=7&&S.emps[key])e.no=L('هذا الرقم الوظيفي مسجَّل من قبل','This employee number is already used')}
+  else if(!m.key||conv){const k2=conv||key;if(!/^[^@\s]+@[^@\s]+$/.test(k2)||!k2.endsWith('@'+DOMAIN))e.email=L(`اكتب إيميلاً ينتهي بـ ‎@${DOMAIN}`,`Enter an email ending in @${DOMAIN}`);else if(S.emps[k2])e.email=L('هذا الإيميل مضاف من قبل','This email is already added');else if(conv&&!ownerOnly())e.email=L('فتح حساب لموظف بدون حساب يتم من حساب مدير النظام','Opening an account is done from the system admin account')}
+  ['ar','no'].forEach(k=>{if(!String(d[k]).trim())e[k]=req});if(!String(d.en).trim())d.en=d.ar;
  if(d.mgr&&d.mgr===key)e.mgr=L('لا يكون الموظف مديراً لنفسه','An employee cannot manage themselves');
  m.errs=e;if(Object.keys(e).length){renderOv();return}
  if(m.busy)return;m.busy=true;
  const data={ar:d.ar.trim(),en:d.en.trim(),no:d.no.trim(),deptAr:d.deptAr.trim(),deptEn:d.deptEn.trim(),tAr:d.tAr.trim(),tEn:d.tEn.trim()||d.tAr.trim(),hire:d.hire,g:d.g,mgr:d.mgr||'',used:Math.max(0,Math.round(+d.used||0)),active:d.active!=='no'};
  if(isAdmin()){data.admin=d.admin==='yes';data.purch=d.purch==='yes'}
  let sal;if(canSeeSal()){const v=String(d.sal).trim();if(v!==String(m.sal0==null?'':m.sal0))sal=v===''?null:Math.round(+v)}
- try{await BE.saveEmployee(key,data,sal);S.modal=null;toast(L('حُفظت بيانات الموظف.','Employee saved.'))}catch(x){m.busy=false;console.error(x);toast(saveErr(x))}
+  try{if(conv){await BE.empMove(m.key,conv);key=conv}await BE.saveEmployee(key,data,sal);S.modal=null;if(conv)hrLoad(true);toast(L('حُفظت بيانات الموظف.','Employee saved.'))}catch(x){m.busy=false;console.error(x);toast(saveErr(x))}
  render()}
-function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)+' — '+ttl(e)])).map(o=>`<option value="${esc(o[0])}"${o[0]===v?' selected':''}>${esc(o[1])}</option>`).join('');
+function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().filter(e=>!noAcc(e.key)).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)+' — '+ttl(e)])).map(o=>`<option value="${esc(o[0])}"${o[0]===v?' selected':''}>${esc(o[1])}</option>`).join('');
  const f=(n,label,v,ex)=>`<div class="f"><label for="s-${n}">${label}</label><input type="text" id="s-${n}" name="${n}" value="${esc(v)}" maxlength="110" ${ex||''}></div>`;
  return `<form id="sform" class="settings" novalidate>
   <div class="chart"><h3>${L('المعتمدون','Approvers')}</h3><p class="note">${L('من يعتمد مرحلة الموارد البشرية والمالية في كل الطلبات، ومن يعتمد طلبات المدراء أنفسهم. المدير المباشر يُحدَّد لكل موظف من بياناته.','Who approves the HR and Finance stages of every request, and who approves the managers’ own requests. The line manager is set on each employee.')}</p>
@@ -1231,7 +1235,7 @@ function hrOv(m){const e=emp(m.key),f=H.files[m.key]||{},mg=canManage(),sc=hrSco
   body=`<p class="note">${L('ملاحظات خاصة بالموارد البشرية. لا يراها الموظف.','Private HR notes. The employee cannot see them.')}</p><textarea id="h-note" rows="9" maxlength="4000">${esc(t)}</textarea>`}
  return `<div class="ov side" data-act="close-bg"><form class="sheet hr-sheet" id="hrform" role="dialog" aria-modal="true" novalidate>
   <div class="sh-h"><h2>${L('ملف الموظف','Employee file')}</h2>${x}</div>
-  <div class="hcard"><span class="hav">${esc((e.ar||'?').trim().charAt(0))}</span><div class="hc-m"><b>${esc(nm(e))}${demoTag(f)}</b><span>${esc(L(e.tAr,e.tEn||e.tAr))} · ${esc(dpt(e))}</span><span class="num">${L('الرقم الوظيفي','No.')} ${esc(e.no)} · ${esc(m.key)}</span><span>${L('المدير المباشر','Line manager')}: ${e.mgr?esc(nm(emp(e.mgr))):`<em class="bad-t">${L('غير محدد','Not set')}</em>`}</span></div><div class="hc-p"><b class="num">${sc.pct}%</b><div class="hbar"><i style="width:${sc.pct}%" class="${sc.pct===100?'ok':sc.pct>=60?'mid':'low'}"></i></div><small>${L('اكتمال الملف','File completeness')}</small></div></div>
+  <div class="hcard"><span class="hav">${esc((e.ar||'?').trim().charAt(0))}</span><div class="hc-m"><b>${esc(nm(e))}${demoTag(f)}</b><span>${esc(L(e.tAr,e.tEn||e.tAr))} · ${esc(dpt(e))}</span><span class="num">${L('الرقم الوظيفي','No.')} ${esc(e.no)} · ${esc(keyLbl(m.key))}</span><span>${L('المدير المباشر','Line manager')}: ${e.mgr?esc(nm(emp(e.mgr))):`<em class="bad-t">${L('غير محدد','Not set')}</em>`}</span></div><div class="hc-p"><b class="num">${sc.pct}%</b><div class="hbar"><i style="width:${sc.pct}%" class="${sc.pct===100?'ok':sc.pct>=60?'mid':'low'}"></i></div><small>${L('اكتمال الملف','File completeness')}</small></div></div>
   <div class="htabs" role="tablist">${tabs.map(t=>`<button type="button" role="tab" aria-selected="${t[0]===tab}" class="${t[0]===tab?'on':''}" data-act="hr-tab" data-t="${t[0]}">${t[1]}</button>`).join('')}</div>
   <div class="sh-b">${body}</div>
   <div class="sh-f"><button type="button" class="btn" data-act="pp-open" data-t="file" data-key="${esc(m.key)}">${L('الملف كاملاً PDF','Complete file (PDF)')}</button><button type="button" class="btn" data-act="hr-zip1">${L('تنزيل الملف كاملاً (ZIP)','Download whole file (ZIP)')}</button>${mg&&(tab==='data'||tab==='notes')?`<button type="submit" class="btn pri">${L('حفظ','Save')}</button>`:''}</div></form></div>`}
@@ -1425,7 +1429,7 @@ const tkAll=()=>H.key===hrKey()?(H.tk||[]):[],tkMine=()=>tkAll().filter(t=>t.emp
 const tkLate=t=>t.status!=='done'&&t.due&&now()>d2ts(t.due)+DAY,ownerOnly=()=>realOwner()&&!S.as;
 const tkChip=t=>t.status==='done'?`<span class="hchip ok">${L('أُنجزت','Done')} ${fS(t.doneAt)} ${fT(t.doneAt)}</span>`:tkLate(t)?`<span class="hchip bad">${L('متأخرة','Overdue')}</span>`:t.emp?`<span class="hchip warn">${L('مطلوبة','Open')}</span>`:`<span class="hchip mut">${L('غير مسندة','Unassigned')}</span>`;
 const tkMeta=t=>[t.ref&&L('فاتورة','Invoice')+' '+t.ref,t.po&&L('أمر شراء','PO')+' '+t.po,t.dest,t.due&&L('الموعد','Due')+' '+fS(d2ts(t.due))].filter(Boolean).map(esc).join(' · ');
-const tkEmps=()=>Object.values(S.emps).filter(e=>e.active!==false&&!(H.files[e.key]||{}).demo).sort((a,b)=>nm(a).localeCompare(nm(b)));
+const tkEmps=()=>Object.values(S.emps).filter(e=>e.active!==false&&!noAcc(e.key)&&!(H.files[e.key]||{}).demo).sort((a,b)=>nm(a).localeCompare(nm(b)));
 const tkSel=(name,v,ex)=>`<select name="${name}" ${ex||''}><option value="">${L('— غير مسندة —','— Unassigned —')}</option>${tkEmps().map(e=>`<option value="${esc(e.key)}" ${v===e.key?'selected':''}>${esc(nm(e))}</option>`).join('')}</select>`;
 function tkPanel(){if(H.key!==hrKey()){hrLoad();return `<p class="note">${L('جارٍ التحميل…','Loading…')}</p>`}
  const all=tkAll().slice().sort((a,b)=>(a.status==='done')-(b.status==='done')||String(a.due||'9').localeCompare(String(b.due||'9'))||b.at-a.at),w=weekOf(now()),fe=S.tkF||'';
@@ -1698,7 +1702,7 @@ const ACT={
  'as-back'(){actBack()},
  'stamp-del'(){BE.saveConfig('company',{stamp:''}).then(()=>toast(L('أُزيل الختم.','Stamp removed.'))).catch(e=>toast(saveErr(e)))},
  'emp-new'(){S.modal={kind:'emp',key:null,d:blankEmp(),errs:{},sal0:null};renderOv()},
- 'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||iso(now()),g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
+ 'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:noAcc(e.key)?'':e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||'',g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
  backup(){backup()},
  'p-toggle'(){S.pdone=!S.pdone;render()},
  'p-xlsx'(){purchXlsx()},
@@ -1794,6 +1798,10 @@ function fbBE(){
   async tkDel(id,n){for(let i=0;i<(n||0);i++)await TK.doc(id).collection('parts').doc(String(i)).delete();await TK.doc(id).delete()},
   repDel(id){return HC('wreports').doc(id).delete()},reqDel(id){return RQ.doc(id).delete()},
   async empDel(k){for(const c of ['salaries','hrfiles','hrnotes']){try{await db.collection(c).doc(k).delete()}catch(e){}}await E.doc(k).delete()},
+  async empMove(a,b){const cp=async c=>{const d=await db.collection(c).doc(a).get();if(d.exists)await db.collection(c).doc(b).set(d.data(),{merge:true})};
+   for(const c of ['employees','salaries','hrfiles','hrnotes'])await cp(c);
+   for(const c of ['hrdocs','tasks']){const q=await db.collection(c).where('emp','==',a).get();for(const d of q.docs)await d.ref.update({emp:b})}
+   for(const c of ['salaries','hrfiles','hrnotes']){try{await db.collection(c).doc(a).delete()}catch(e){}}await E.doc(a).delete()},
   async hrLoad(u,all){const o={files:{},docs:[],reps:[],notes:{}};try{const t=await CF.doc('wrtasks').get();o.tasks=t.exists?(t.data().text||''):''}catch(e){o.tasks=''}if(all){const [f,d,r,n]=await Promise.all([HC('hrfiles').get(),HC('hrdocs').get(),HC('wreports').get(),HC('hrnotes').get()]);f.forEach(x=>{o.files[x.id]=x.data()});o.docs=qd(d);o.reps=qd(r);n.forEach(x=>{o.notes[x.id]=x.data()})}
    else{const [f,d,r]=await Promise.all([HC('hrfiles').doc(u).get(),HC('hrdocs').where('emp','==',u).get(),HC('wreports').where('emp','==',u).get()]);if(f.exists)o.files[u]=f.data();o.docs=qd(d);o.reps=qd(r)}return o},
   hrSaveFile(k,data){return HC('hrfiles').doc(k).set(data,{merge:true})},
@@ -1840,6 +1848,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
   async repDel(id){if(!own())deny();delete MH().reps[id];persist()},
   async reqDel(id){if(!own())deny();M.reqs=M.reqs.filter(r=>r.id!==id);persist();sync()},
   async empDel(k){if(!own())deny();delete M.emps[k];persist();sync()},
+  async empMove(a,b){if(!own())deny();const h=MH(),t=MT();M.emps[b]=Object.assign({},M.emps[a],M.emps[b]);delete M.emps[a];if(M.sal[a]!=null){M.sal[b]=M.sal[a];delete M.sal[a]}if(h.files[a]){h.files[b]=h.files[a];delete h.files[a]}if(h.notes[a]){h.notes[b]=h.notes[a];delete h.notes[a]}Object.values(h.docs).forEach(d=>{if(d.emp===a)d.emp=b});Object.values(t).forEach(x=>{if(x.emp===a)x.emp=b});persist();sync()},
   async hrLoad(u,all){const h=MH(),o={files:{},docs:[],reps:[],notes:{},tasks:(M.wrtasks||{}).text||''};all=all&&canManage();Object.keys(h.files).forEach(k=>{if(all||k===u)o.files[k]=cl(h.files[k])});o.docs=Object.keys(h.docs).map(id=>Object.assign(cl(h.docs[id]),{id})).filter(d=>all||d.emp===u);o.reps=Object.keys(h.reps).map(id=>Object.assign(cl(h.reps[id]),{id})).filter(d=>all||d.emp===u);if(all)o.notes=cl(h.notes);return o},
   async hrSaveFile(k,data){if(!canManage())deny();const h=MH();h.files[k]=Object.assign({},h.files[k],data);persist()},
   async hrSaveNote(k,data){if(!canManage())deny();MH().notes[k]=data;persist()},
