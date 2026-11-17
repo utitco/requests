@@ -729,6 +729,7 @@ function renderApp(){
  if(canPurch())tabs.push(['purch',L('مشتريات المورّدين','Supplier purchasing')]);
  if(canManage())tabs.push(['emps',L('الموظفون','Employees')]);
  if(isAdmin())tabs.push(['settings',L('الإعدادات','Settings')]);
+ if(ownerOnly())tabs.push(['audit',L('المراقبة','Monitoring')]);
  if(!tabs.some(t=>t[0]===S.tab))S.tab=tabs[0][0];
  const noRoute=!R.hr||!R.fin||!R.ceo,nEmps=Object.keys(S.emps).length;
  let setup='';
@@ -760,7 +761,7 @@ function renderApp(){
  </div></footer>`;
 }
 
-function panel(){if(S.tab==='stats')return stats();if(S.tab==='verify')return verify();if(S.tab==='team')return teamPanel();if(S.tab==='tk')return tkPanel();if(S.tab==='mytk')return myTkPanel();if(S.tab==='hr')return hrPanel();if(S.tab==='wr')return wrPanel();if(S.tab==='myfile')return myFilePanel();if(S.tab==='purch')return purchPanel();if(S.tab==='emps')return empsPanel();if(S.tab==='settings')return settingsPanel();
+function panel(){if(S.tab==='stats')return stats();if(S.tab==='verify')return verify();if(S.tab==='audit')return audPanel();if(S.tab==='team')return teamPanel();if(S.tab==='tk')return tkPanel();if(S.tab==='mytk')return myTkPanel();if(S.tab==='hr')return hrPanel();if(S.tab==='wr')return wrPanel();if(S.tab==='myfile')return myFilePanel();if(S.tab==='purch')return purchPanel();if(S.tab==='emps')return empsPanel();if(S.tab==='settings')return settingsPanel();
  return `<div class="tools">
   <input type="search" id="q" placeholder="${L('ابحث بالرقم المرجعي أو الاسم أو التفاصيل','Search by reference, name or details')}" value="${esc(S.f.q)}" aria-label="${L('بحث','Search')}">
   <select id="ft" aria-label="${L('النوع','Type')}"><option value="">${L('كل الأنواع','All types')}</option>${Object.keys(TYPES).map(k=>`<option value="${k}"${S.f.type===k?' selected':''}>${L(TYPES[k].ar,TYPES[k].en)}</option>`).join('')}</select>
@@ -911,11 +912,11 @@ async function submit(){readForm();const m=S.modal,t=m.type,d=m.d;m.errs=validat
 function saveErr(e){return e&&e.code==='permission-denied'?L('ليست لديك صلاحية لهذا الإجراء.','You do not have permission for this action.'):L('تعذّر الحفظ. تحقق من الاتصال وحاول مرة أخرى.','Could not save. Check your connection and try again.')}
 
 /* ---------- employees + settings (HR / admin) ---------- */
-function empsPanel(){const l=Object.values(S.emps).sort((a,b)=>String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
+function empsPanel(){audLoad();const l=Object.values(S.emps).sort((a,b)=>String(a.no).localeCompare(String(b.no),'en',{numeric:true}));
  return `<div class="phead"><p class="note">${L('من هنا تضيف الموظفين وتعدّل بياناتهم. الإيميل هو ما يدخل به الموظف، والمدير المباشر يحدد من يعتمد طلباته. من لا يحتاج الدخول يُضاف بدون إيميل ويبقى له ملف عند الموارد البشرية، وإذا أضفت إيميله لاحقاً صار له حساب.','Add employees and edit their details here. The email is what the employee signs in with, and the line manager decides who approves their requests.')}</p><span class="pills"><button class="btn sm" data-act="backup">${IC.dl}${L('تنزيل نسخة احتياطية','Download backup')}</button><button class="btn sm" data-act="imp-tpl">${L('قالب Excel','Excel template')}</button><label class="btn sm" for="impfile" tabindex="0">${L('استيراد من Excel','Import from Excel')}</label><input type="file" id="impfile" accept=".xlsx,.xls,.csv" hidden><button class="btn pri sm" data-act="emp-new">${IC.plus}${L('إضافة موظف','Add employee')}</button></span></div>
  ${l.length?`<div class="rows emps"><div class="rhead"><span>${L('الرقم الوظيفي','Employee no.')}</span><span>${L('الاسم','Name')}</span><span>${L('القسم والمسمى','Department & title')}</span><span>${L('المدير المباشر','Line manager')}</span><span>${L('الحالة','Status')}</span></div>
  ${l.map(e=>{const tags=[];if(e.key===R.hr)tags.push(o2(STAGE.hr));if(e.key===R.fin)tags.push(o2(STAGE.fin));if(e.key===R.ceo)tags.push(L('الإدارة العليا','Executive'));if(e.admin)tags.push(L('مدير نظام','Admin'));if(e.purch)tags.push(L('مشتريات','Purchasing'));
-  return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(keyLbl(e.key))}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}${realOwner()&&!S.as&&e.key!==S.user&&e.active!==false&&!noAcc(e.key)?`<span class="asbtn" data-act="as-go" data-key="${esc(e.key)}" role="button">${L('دخول بحسابه','Use account')}</span>`:''}</span></button>`}).join('')}</div>`
+  return `<button class="row" data-act="emp-edit" data-key="${esc(e.key)}"><span class="c-ref"><b class="num">${esc(e.no)}</b></span><span>${esc(nm(e))}<small class="num">${esc(keyLbl(e.key))}</small></span><span>${esc(dpt(e))}<small>${esc(ttl(e))}</small></span><span>${e.mgr?esc(nm(emp(e.mgr))):'—'}</span><span class="c-st"><span class="pills"><span class="pill ${e.active===false?'rejected':'approved'}">${e.active===false?L('موقوف','Inactive'):L('نشط','Active')}</span></span>${tags.length?`<small>${tags.join(' · ')}</small>`:''}${ownerOnly()&&!noAcc(e.key)&&AU.t?`<small>${isOn(presOf(e.key))?L('متصل الآن','Online now'):presOf(e.key)?L('آخر نشاط','Last active')+' '+fS(presOf(e.key).t)+' '+fT(presOf(e.key).t):L('لم يدخل بعد','Never signed in')}</small>`:''}${realOwner()&&!S.as&&e.key!==S.user&&e.active!==false&&!noAcc(e.key)?`<span class="asbtn" data-act="as-go" data-key="${esc(e.key)}" role="button">${L('دخول بحسابه','Use account')}</span>`:''}</span></button>`}).join('')}</div>`
  :`<div class="rows"><div class="empty"><b>${L('لا يوجد موظفون بعد','No employees yet')}</b>${L('اضغط «إضافة موظف» وابدأ بنفسك.','Use “Add employee” and start with yourself.')}</div></div>`}`}
 /* ----- Excel import ----- */
 const IMP=[['email','الإيميل','email'],['ar','الاسم بالعربي','name arabic'],['en','الاسم بالإنجليزي','name english'],['no','الرقم الوظيفي','employee no'],['deptAr','القسم بالعربي','department arabic'],['deptEn','القسم بالإنجليزي','department english'],['tAr','المسمى بالعربي','title arabic'],['tEn','المسمى بالإنجليزي','title english'],['hire','تاريخ التعيين','hire date'],['g','الجنس','gender'],['mgr','إيميل المدير المباشر','manager email'],['used','أيام الإجازة المستخدمة','leave days used'],['sal','الراتب','salary']];
@@ -970,7 +971,7 @@ function impView(m){const nw=m.items.filter(i=>i.isNew).length,up=m.items.length
   <div class="sh-f"><button type="button" class="btn" data-act="close">${L('إلغاء','Cancel')}</button>${m.items.length?`<button type="button" class="btn pri" data-act="imp-go"${m.busy?' disabled':''}>${L('استيراد','Import')} <span class="num">${m.items.length}</span></button>`:''}</div>
  </div></div>`}
 async function doImport(){const m=S.modal;if(!m||m.kind!=='imp'||m.busy)return;m.busy=true;renderOv();const n=m.items.length;
- try{for(const it of m.items)if(it.from)await BE.empMove(it.from,it.key);await BE.importEmployees(m.items);let nf=0;if(canManage())for(const it of m.items){if(!it.file)continue;const f=Object.assign({},it.file,{updatedAt:now()});if(f.wr&&!((H.files||{})[it.key]||{}).wrSince)f.wrSince=weekOf(now());await BE.hrSaveFile(it.key,f);nf++}S.modal=null;toast(L(`استُورد ${n} موظف`,`Imported ${n} employees`)+(nf?L(`، وعُبّئت ملفات ${nf} منهم.`,`, and filled ${nf} employee files.`):'.'));if(nf)hrLoad(true)}catch(e){m.busy=false;console.error(e);toast(saveErr(e))}render()}
+ try{for(const it of m.items)if(it.from)await BE.empMove(it.from,it.key);await BE.importEmployees(m.items);S.audMute=1;let nf=0;if(canManage())for(const it of m.items){if(!it.file)continue;const f=Object.assign({},it.file,{updatedAt:now()});if(f.wr&&!((H.files||{})[it.key]||{}).wrSince)f.wrSince=weekOf(now());await BE.hrSaveFile(it.key,f);nf++}S.audMute=0;S.modal=null;toast(L(`استُورد ${n} موظف`,`Imported ${n} employees`)+(nf?L(`، وعُبّئت ملفات ${nf} منهم.`,`, and filled ${nf} employee files.`):'.'));if(nf)hrLoad(true)}catch(e){S.audMute=0;m.busy=false;console.error(e);toast(saveErr(e))}render()}
 function blankEmp(){return {email:'',ar:'',en:'',no:'',deptAr:'',deptEn:'',tAr:'',tEn:'',hire:iso(now()),g:'m',mgr:'',used:'0',sal:'',active:'yes',admin:'no',purch:'no'}}
 function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  const inp=(n,type,v,ex)=>`<input type="${type}" id="f-${n}" name="${n}" value="${esc(v)}"${inv(n)}${type==='text'?' maxlength="80"':''} ${ex||''}>`;
@@ -1479,6 +1480,47 @@ function teamPanel(){if(H.key!==hrKey()){hrLoad();return `<p class="note">${L('�
  ${es.length?`<div class="hr-wrap"><table class="hr-t"><thead><tr><th>${L('الموظف','Employee')}</th><th>${L('مهام مطلوبة','Open tasks')}</th><th>${L('أُنجزت هذا الأسبوع','Done this week')}</th><th>${L('آخر تقرير أسبوعي','Latest weekly report')}</th></tr></thead><tbody>${es.map(row).join('')}</tbody></table></div>`:`<div class="chart" style="margin-top:14px"><p class="note">${L('لا يوجد موظفون تحت إدارتك في النظام.','No employees report to you in the system.')}</p></div>`}
  ${open.length?`<div class="chart" style="margin-top:14px"><h3>${L('المهام المطلوبة','Open tasks')} <span class="num">(${open.length})</span></h3>${open.slice().sort((a,b)=>tkLate(b)-tkLate(a)||String(a.due||'9').localeCompare(String(b.due||'9'))).slice(0,60).map(card).join('')}</div>`:''}
  ${doneW.length?`<div class="chart" style="margin-top:14px"><h3>${L('أُنجزت هذا الأسبوع','Done this week')} <span class="num">(${doneW.length})</span></h3>${doneW.sort((a,b)=>b.doneAt-a.doneAt).slice(0,60).map(card).join('')}</div>`:''}`}
+
+/* ---------- monitoring: audit log, presence, full backup (owner only) ---------- */
+function logA(a,k){if(S.auth!=='in'||!S.user||!BE.audit)return;try{const p=BE.audit({by:S.realUser||S.user,as:S.as?S.user:'',a:String(a).slice(0,80),k:String(k==null?'':k).slice(0,200),t:now()});if(p&&p.catch)p.catch(()=>{})}catch(e){}}
+function presPing(first){if(S.auth!=='in'||!S.user||!BE.ping)return;try{const p=BE.ping(S.realUser||S.user,!!first);if(p&&p.catch)p.catch(()=>{})}catch(e){}
+ if(first){const lk='uti.lastLog.'+(S.realUser||S.user),last=+store.get(lk)||0;if(now()-last>30*60000){store.set(lk,String(now()));logA('دخول النظام','')}}}
+const AUD={saveEmployee:k=>['حفظ بيانات موظف',k],importEmployees:it=>['استيراد موظفين من Excel',it.length+' موظف'],empDel:k=>['حذف موظف',k],empMove:(a,b)=>['فتح حساب دخول لموظف',b],
+ saveConfig:id=>['تعديل الإعدادات',{company:'بيانات الشركة والختم',routing:'المعتمدون',wrtasks:'المهام الجاهزة'}[id]||id],hrSaveFile:k=>['تعديل ملف موظف',k],hrSaveNote:k=>['ملاحظة في ملف موظف',k],
+ hrPutDoc:m=>['رفع مستند',m.emp+' · '+m.name],hrDelDoc:id=>['حذف مستند',((H.docs||[]).find(d=>d.id===id)||{}).name||id],hrPatchRep:(id,p)=>p&&p.status?['إعادة تقرير أسبوعي للتعديل',id]:null,hrSaveRep:(id,d)=>d&&d.status==='sent'?['إرسال تقرير أسبوعي',d.week]:null,
+ repDel:id=>['حذف تقرير أسبوعي',id],reqDel:id=>['حذف طلب',((S.reqs||[]).find(r=>r.id===id)||{}).ref||id],addRequest:r=>['تقديم طلب',r.ref],
+ updateRequest:(id,p)=>[p.status==='rejected'?'رفض طلب':p.status?'اعتماد نهائي لطلب':p.stages?'اعتماد مرحلة في طلب':'تحديث طلب',((S.reqs||[]).find(r=>r.id===id)||{}).ref||id],
+ tkAdd:d=>['إضافة مهمة',(d.emp?d.emp+' · ':'')+d.title],tkPatch:(id,p)=>p.status==='done'?['تسجيل إنجاز مهمة',id]:p.status?['إعادة فتح مهمة',id]:('emp' in p)?['إسناد مهمة',p.emp||'—']:null,tkDel:id=>['حذف مهمة',id],
+ savePurch:c=>['حفظ في مشتريات المورّدين',c],delPurch:c=>['حذف من مشتريات المورّدين',c],delSupplier:()=>['حذف مورّد',''],importPurch:()=>['استيراد بيانات المشتريات','']};
+function audWrap(){Object.keys(AUD).forEach(n=>{const o=BE[n];if(typeof o!=='function')return;BE[n]=async function(){const r=await o.apply(BE,arguments);if(!S.audMute){try{const x=AUD[n].apply(null,arguments);if(x)logA(x[0],x[1])}catch(e){}}return r}})}
+const AUDACT={'hr-open':el=>['فتح ملف موظف',el.dataset.key],'hr-dl':el=>{const d=(H.docs||[]).find(d=>d.id===el.dataset.id)||{};return ['تنزيل مستند',(d.emp||'')+' · '+(d.name||'')]},'hr-zip':()=>['تنزيل ملفات كل الموظفين (ZIP)',''],'hr-zip1':()=>['تنزيل ملف موظف (ZIP)',(S.modal||{}).key],
+ 'hr-xlsx':()=>['تنزيل سجلات المنشأة (Excel)',''],'pp-pdf':()=>['تنزيل PDF',(S.modal||{}).key||(S.modal||{}).id],'pp-full':()=>['تنزيل ملف موظف كاملاً (PDF)',(S.modal||{}).key],backup:()=>['تنزيل نسخة احتياطية (بيانات)',''],
+ pdf:()=>['تنزيل مستند طلب (PDF)',((S.reqs||[]).find(r=>r.id===(S.modal||{}).id)||{}).ref||''],'p-xlsx':()=>['تنزيل مشتريات المورّدين (Excel)',''],'as-go':el=>['الدخول بحساب موظف',el.dataset.key],'tk-proof':el=>['فتح إثبات مهمة',el.dataset.id],'bk-full':()=>['تنزيل نسخة احتياطية كاملة','']};
+function audAct(el){const f=AUDACT[el.dataset.act];if(!f)return;try{const x=f(el);if(x)logA(x[0],x[1])}catch(e){}}
+let AU={t:0,busy:false,rows:[],pres:{}};
+function audLoad(force){if(!ownerOnly()||AU.busy||(!force&&now()-AU.t<60000))return;AU.busy=true;BE.audLoad().then(x=>{AU={t:now(),busy:false,rows:x.rows||[],pres:x.pres||{}};renderApp()}).catch(e=>{console.error(e);AU.busy=false;AU.t=now();renderApp()})}
+const audWho=k=>S.emps[k]?nm(S.emps[k]):k,audK=k=>String(k||'').split(' · ').map(x=>S.emps[x]?nm(S.emps[x]):x).join(' · ');
+const presOf=k=>AU.pres[k]||null,isOn=p=>!!p&&now()-(p.t||0)<6*60000;
+function presChip(k){const p=presOf(k);if(!p)return `<span class="hchip mut">${L('لم يدخل بعد','Never signed in')}</span>`;if(isOn(p))return `<span class="hchip ok">${L('متصل الآن','Online now')}</span>`;return `<span class="hchip mut">${L('آخر نشاط','Last active')} <span class="num">${fS(p.t)} ${fT(p.t)}</span></span>`}
+function audPanel(){audLoad();const es=allEmps().filter(e=>!noAcc(e.key)),on=es.filter(e=>isOn(presOf(e.key))),d0=d2ts(iso(now())),today=es.filter(e=>presOf(e.key)&&(presOf(e.key).t||0)>=d0),never=es.filter(e=>!presOf(e.key)),fe=S.audF||'';
+ const rows=AU.rows.filter(r=>!fe||r.by===fe||r.as===fe),srt=es.slice().sort((a,b)=>((presOf(b.key)||{}).t||0)-((presOf(a.key)||{}).t||0)||nm(a).localeCompare(nm(b)));
+ return `<div class="hr-top"><p class="note">${L('هذه الصفحة تظهر لك أنت فقط. فيها من دخل النظام ومتى، وسجل بكل عملية مهمة: من فتح ملف موظف، من نزّل ملفات، من عدّل أو حذف أو اعتمد. السجل لا يُعدَّل ولا يُحذف من داخل الموقع.','Only you can see this page: who signed in and when, and a log of every important action. The log cannot be edited or deleted from inside the site.')}</p>
+  <div class="hr-acts"><button class="btn" data-act="aud-refresh">${L('تحديث','Refresh')}</button><button class="btn" data-act="aud-xlsx">${L('تنزيل السجل (Excel)','Download log (Excel)')}</button><button class="btn pri" data-act="bk-full">${IC.dl}${L('نسخة احتياطية كاملة','Full backup')}</button></div></div>
+ <div class="kpis"><div class="kpi"><span>${L('متصلون الآن','Online now')}</span><b class="num">${on.length}</b></div><div class="kpi"><span>${L('دخلوا اليوم','Active today')}</span><b class="num">${today.length}</b></div><div class="kpi"><span>${L('لم يدخلوا أبداً','Never signed in')}</span><b class="num">${never.length}</b></div><div class="kpi"><span>${L('عمليات مسجّلة (آخر 500)','Logged actions (latest 500)')}</span><b class="num">${AU.rows.length}</b></div></div>
+ <div class="chart" style="margin-top:14px"><h3>${L('نشاط الموظفين','Employee activity')}</h3><div class="hr-wrap"><table class="hr-t"><thead><tr><th>${L('الموظف','Employee')}</th><th>${L('الحالة','Status')}</th><th>${L('آخر دخول','Last sign-in')}</th><th>${L('مرات الدخول','Sign-ins')}</th></tr></thead><tbody>${srt.map(e=>{const p=presOf(e.key);return `<tr class="nohov"><td><b>${esc(nm(e))}</b><small>${esc([ttl(e),dpt(e)].filter(Boolean).join(' · '))}</small></td><td>${presChip(e.key)}</td><td class="num">${p&&p.loginT?fS(p.loginT)+' '+fT(p.loginT):'—'}</td><td class="num">${p&&p.n?p.n:'—'}</td></tr>`}).join('')}</tbody></table></div></div>
+ <div class="chart" style="margin-top:14px"><h3>${L('سجل العمليات','Action log')}</h3><div class="hr-acts"><label for="aud-f" class="note">${L('عرض عمليات','Show actions of')}</label><select id="aud-f" style="width:auto"><option value="">${L('الكل','Everyone')}</option>${es.filter(e=>AU.rows.some(r=>r.by===e.key||r.as===e.key)).map(e=>`<option value="${esc(e.key)}" ${fe===e.key?'selected':''}>${esc(nm(e))}</option>`).join('')}</select></div>
+ ${rows.length?`<div class="hr-wrap"><table class="hr-t"><thead><tr><th>${L('الوقت','Time')}</th><th>${L('من','Who')}</th><th>${L('العملية','Action')}</th><th>${L('التفاصيل','Details')}</th></tr></thead><tbody>${rows.slice(0,300).map(r=>`<tr class="nohov"><td class="num">${fS(r.t)} ${fT(r.t)}</td><td>${esc(audWho(r.by))}${r.as?`<small>${L('من داخل حساب','inside the account of')} ${esc(audWho(r.as))}</small>`:''}</td><td>${esc(r.a)}</td><td>${esc(audK(r.k))}</td></tr>`).join('')}</tbody></table></div>`:`<p class="note">${AU.t?L('لا توجد عمليات مسجّلة بعد.','No logged actions yet.'):L('جارٍ التحميل…','Loading…')}</p>`}</div>`}
+async function audXlsx(){try{await loadXLSX();const X=window.XLSX,wb=X.utils.book_new(),ws=X.utils.aoa_to_sheet([['الوقت','من','من داخل حساب','العملية','التفاصيل']].concat(AU.rows.map(r=>[fS(r.t)+' '+fT(r.t),audWho(r.by),r.as?audWho(r.as):'',r.a,audK(r.k)])));ws['!cols']=[{wch:18},{wch:26},{wch:22},{wch:30},{wch:44}];X.utils.book_append_sheet(wb,ws,'سجل العمليات');
+ await saveFile('سجل-المراقبة-'+iso(now())+'.xlsx',new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}))}catch(e){console.error(e);toast(L('تعذّر تجهيز الملف.','Could not prepare the file.'))}}
+async function fullBackup(){if(!ownerOnly()||S.bkBusy)return;S.bkBusy=true;S.audMute=1;toast(L('جارٍ تجهيز النسخة الكاملة… قد تأخذ دقيقة.','Preparing the full backup… this can take a minute.'));
+ try{await loadZip();const z=new window.JSZip(),d=await BE.dumpAll();let nd=0,np=0,bad=0;
+  z.file('البيانات/data.json',JSON.stringify(Object.assign({exportedAt:new Date().toISOString(),by:S.user},d),null,1));
+  const docs=d.hrdocs||{},used={};for(const id of Object.keys(docs)){const m=docs[id],e=emp(m.emp);let n=safeName((e.no||'')+' - '+(e.ar||m.emp))+'/'+safeName(((HK.find(x=>x[0]===m.kind)||HK[8])[1])+' - '+m.name);if(used[n]){const i=n.lastIndexOf('.');n=(i>0?n.slice(0,i):n)+' ('+(++used[n])+')'+(i>0?n.slice(i):'')}else used[n]=1;try{z.file('مستندات الموظفين/'+n,b642blob(await BE.hrGetDoc(id,m.n),m.type));nd++}catch(x){console.error(x);bad++}}
+  const tks=d.tasks||{};for(const id of Object.keys(tks)){const t=tks[id];if(!t.pN)continue;try{z.file('إثباتات المهام/'+safeName(id+' - '+(t.pName||'proof')),b642blob(await BE.tkGetProof(id,t.pN),t.pType));np++}catch(x){console.error(x);bad++}}
+  if(H.key===hrKey()){try{z.file('سجلات المنشأة.xlsx',await hrRegisters())}catch(x){console.error(x)}}
+  z.file('اقرأني.txt',['نسخة احتياطية كاملة من نظام الطلبات الداخلية','التاريخ: '+new Date().toLocaleString('en-GB'),'','المحتويات:','- البيانات/data.json : كل بيانات النظام (الموظفون، الرواتب، الطلبات، ملفات الموظفين، التقارير، المهام، المشتريات، الإعدادات، سجل المراقبة)','- مستندات الموظفين : '+nd+' مستند','- إثباتات المهام : '+np+' ملف','- سجلات المنشأة.xlsx : كشوف جاهزة للطباعة',bad?'- تعذّر تنزيل '+bad+' ملف':'','','هذا الملف فيه هويات ورواتب وحسابات بنكية. احفظه في مكان آمن ولا ترسله لأحد.'].filter(x=>x!==null).join('\r\n'));
+  await saveFile('نسخة-كاملة-utitco-'+iso(now())+'.zip',await z.generateAsync({type:'blob',compression:'DEFLATE'}));toast(L(`نُزّلت النسخة الكاملة: ${nd} مستند${bad?`، وتعذّر ${bad}`:''}. احفظها في مكان آمن.`,`Full backup downloaded: ${nd} documents${bad?`, ${bad} failed`:''}. Keep it somewhere safe.`))}
+ catch(e){console.error(e);toast(L('تعذّر تجهيز النسخة الكاملة.','Could not prepare the full backup.'))}S.bkBusy=false;S.audMute=0}
 /* ---------- supplier purchasing (admin + purchasing permission) ---------- */
 S.sups={};S.pos=[];S.psel=null;S.pdone=false;
 const PK=['po','pof','pit','psup','pxi'];
@@ -1682,6 +1724,7 @@ const ACT={
  'wr-carry'(el){wrRead();const d=S.wr,t=d.carry.splice(+el.dataset.i,1)[0];if(d.done.length===1&&!d.done[0].t.trim())d.done[0].t=t;else d.done.push({t,st:'done'});renderApp()},
  'wr-save'(){wrSave(false)},
  'tk-new'(){S.modal={kind:'tkn'};renderOv()},
+ 'aud-refresh'(){audLoad(true)},'aud-xlsx'(){audXlsx()},'bk-full'(){fullBackup()},
  'wr-tk'(el){wrRead();const d=S.wr,w=d.week,have=d.done.map(x=>x.t.trim());tkMine().filter(t=>t.status==='done'&&weekOf(t.doneAt)===w&&!have.includes(t.title)&&(el.dataset.id==='*'||t.id===el.dataset.id)).forEach(t=>{const e=d.done.find(x=>!x.t.trim());if(e){e.t=t.title;e.st='done'}else d.done.push({t:t.title,st:'done'})});renderApp()},
  'tk-done'(el){tkDone(el.dataset.id)},
  async 'tk-proof'(el){const t=tkAll().find(x=>x.id===el.dataset.id);if(!t)return;try{await saveFile(t.pName||'proof',b642blob(await BE.tkGetProof(t.id,t.pN),t.pType))}catch(e){console.error(e);toast(saveErr(e))}},
@@ -1733,11 +1776,12 @@ const ACT={
  vchip(el){S.vq=el.dataset.ref;doVerify()}
 };
 function doVerify(){const q=S.vq.trim().toUpperCase();const r=S.reqs.find(x=>x.ref===q);S.vres=q?(r?r.id:null):undefined;render()}
-document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f)f(el,ev)});
+document.addEventListener('click',ev=>{const el=ev.target.closest('[data-act]');if(!el||el.disabled)return;const f=ACT[el.dataset.act];if(f){audAct(el);f(el,ev)}});
 document.addEventListener('change',ev=>{const t=ev.target;
  if(t.id==='tk-file'){const f=t.files&&t.files[0];t.value='';tkImport(f)}
  else if(t.dataset&&t.dataset.tkp){S.tkP=S.tkP||{};const f=t.files&&t.files[0];if(f)S.tkP[t.dataset.tkp]=f;const ns={};document.querySelectorAll('[data-tkn]').forEach(e=>{ns[e.dataset.tkn]=e.value});renderApp();Object.keys(ns).forEach(k=>{const e=document.querySelector(`[data-tkn="${CSS.escape(k)}"]`);if(e)e.value=ns[k]})}
  else if(t.id==='tk-f'){S.tkF=t.value;renderApp()}
+ else if(t.id==='aud-f'){S.audF=t.value;renderApp()}
  else if(t.id==='tki-bulk'){tkiRead();S.modal.items.forEach(x=>{if(!x.emp)x.emp=t.value});renderOv()}
  else if(t.dataset&&t.dataset.tk){const id=t.dataset.tk,v=t.value;BE.tkPatch(id,{emp:v,assignedAt:v?now():null,by:S.user}).then(()=>{toast(v?L('أُسندت المهمة.','Task assigned.'):L('أُلغي الإسناد.','Assignment removed.'));hrLoad(true)}).catch(e=>{console.error(e);toast(saveErr(e))})}
  else if(t.id==='hup-bulk'){const fs=[...t.files];t.value='';hrBulk(fs)}
@@ -1768,7 +1812,7 @@ const th=store.get('uti.theme');if(th==='dark'||th==='light')document.documentEl
 function onUser(email,verified){S.tkLanded=false;S.tkP={};S.ask=null;H={key:'',busy:false,ok:false,files:{},docs:[],reps:[],notes:{}};S.wr=null;S.as=null;S.realUser=null;S.reqs=[];S.sups={};S.pos=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
  if(!email){S.user=null;S.auth='out';render();return false}
  S.user=email.toLowerCase();if(!S.user.endsWith('@'+DOMAIN)||!verified){S.auth='denied';render();return false}
- S.auth='in';S.loginErr=null;render();return true}
+ S.auth='in';S.loginErr=null;render();setTimeout(()=>presPing(true),5000);return true}
 const pslug=v=>String(v).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';
 function fbBE(){
  firebase.initializeApp(CFG.firebase);const auth=firebase.auth(),db=firebase.firestore();let unsubs=[],started=false,wasBoss=false;
@@ -1790,6 +1834,10 @@ function fbBE(){
  const HC=n=>db.collection(n),qd=q=>q.docs.map(d=>Object.assign(d.data(),{id:d.id}));
  const TK=db.collection('tasks');
  const hrApi={
+  audit(d){return db.collection('audit').add(Object.assign({},d,{at:firebase.firestore.FieldValue.serverTimestamp()}))},
+  ping(u,first){const ts=firebase.firestore.FieldValue.serverTimestamp(),d={seen:ts,t:Date.now()};if(first){d.login=ts;d.loginT=Date.now();d.n=firebase.firestore.FieldValue.increment(1)}return db.collection('presence').doc(u).set(d,{merge:true})},
+  async audLoad(){const [a,p]=await Promise.all([db.collection('audit').orderBy('at','desc').limit(500).get(),db.collection('presence').get()]);const pres={};p.forEach(x=>{pres[x.id]=x.data()});return {rows:qd(a),pres}},
+  async dumpAll(){const o={};for(const c of ['employees','salaries','config','counters','requests','suppliers','porders','hrfiles','hrnotes','hrdocs','wreports','tasks','audit','presence']){const q=await db.collection(c).get();o[c]={};q.forEach(x=>{o[c][x.id]=x.data()})}return o},
   async teamLoad(){const [r,t]=await Promise.all([HC('wreports').where('status','==','sent').get(),TK.get()]);return {reps:qd(r),tk:qd(t)}},
   async tkLoad(u,all){const q=all?await TK.get():await TK.where('emp','==',u).get();return qd(q)},
   tkAdd(d){return TK.add(d)},tkPatch(id,p){return TK.doc(id).update(p)},
@@ -1839,6 +1887,10 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
  const MH=()=>M.hr||(M.hr={files:{},docs:{},parts:{},reps:{},notes:{}}),deny=()=>{throw {code:'permission-denied'}};
  const MT=()=>MH().tk||(MH().tk={}),own=()=>!!CFG.owner&&S.user===CFG.owner.toLowerCase();
  return {mock:true,login,resync:sync,
+  async audit(d){const h=MH();(h.aud||(h.aud=[])).push(Object.assign({id:'a'+now().toString(36)+Math.random().toString(36).slice(2,5)},d));persist()},
+  async ping(u,first){const h=MH(),p=(h.pres||(h.pres={}))[u]||{};p.t=now();if(first){p.loginT=now();p.n=(p.n||0)+1}h.pres[u]=p;persist()},
+  async audLoad(){if(!own())deny();const h=MH();return {rows:cl(h.aud||[]).sort((a,b)=>b.t-a.t).slice(0,500),pres:cl(h.pres||{})}},
+  async dumpAll(){if(!own())deny();const h=MH(),t=MT(),o={employees:cl(M.emps),salaries:cl(M.sal),requests:{},hrfiles:cl(h.files),hrnotes:cl(h.notes),hrdocs:cl(h.docs),wreports:cl(h.reps),tasks:cl(t),audit:cl(h.aud||[]),presence:cl(h.pres||{})};M.reqs.forEach(r=>{o.requests[r.id]=cl(r)});return o},
   async teamLoad(){if(!canWatch())deny();const h=MH(),t=MT();return {reps:Object.keys(h.reps).map(id=>Object.assign(cl(h.reps[id]),{id})).filter(r=>r.status==='sent'),tk:Object.keys(t).map(id=>Object.assign(cl(t[id]),{id}))}},
   async tkLoad(u,all){const t=MT();all=all&&canManage();return Object.keys(t).map(id=>Object.assign(cl(t[id]),{id})).filter(x=>all||x.emp===u)},
   async tkAdd(d){if(!canManage())deny();MT()['t'+now().toString(36)+Math.random().toString(36).slice(2,6)]=d;persist()},
@@ -1873,7 +1925,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
  }}
 let BE;
 try{BE=CFG.mock?mockBE():fbBE()}catch(e){console.error(e);S.auth='in';S.err='config';BE={init(){render()},signOut(){location.reload()}}}
-render();BE.init();
+audWrap();render();BE.init();setInterval(()=>{if(document.visibilityState==='visible')presPing(false)},240000);
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{Object.keys(stampCache).forEach(k=>delete stampCache[k]);Object.keys(lvlCache).forEach(k=>delete lvlCache[k]);if(S.modal&&S.modal.kind==='doc')renderOv()});
 
 window.__uti={S,docHTML,docFit,makePDF,tafqeet,enAmt,render,renderOv,get BE(){return BE}};
