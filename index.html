@@ -722,6 +722,7 @@ function renderApp(){
  tabs.push(['verify',L('التحقق من مستند','Verify a document')]);
  hrLoad();{const mt=tkMine();if(mt.length)tabs.unshift(['mytk',L('مهامي','My tasks'),tkOpen(mt).length])}
  {const hm=hrMine();if(hm&&hm.wr)tabs.push(['wr',L('تقريري الأسبوعي','My weekly report')]);if(hm&&!canManage())tabs.push(['myfile',L('ملفي','My file')])}
+ if(canWatch())tabs.push(['team',L('متابعة الفريق','Team follow-up'),0]);
  if(canManage())tabs.push(['tk',L('المهام','Tasks'),0]);
  if(canManage())tabs.push(['hr',L('ملفات الموظفين','Employee files'),H.key===hrKey()?H.reps.filter(r=>r.status==='sent'&&!r.seenAt).length:0]);
  if(canPurch())tabs.push(['purch',L('مشتريات المورّدين','Supplier purchasing')]);
@@ -758,7 +759,7 @@ function renderApp(){
  </div></footer>`;
 }
 
-function panel(){if(S.tab==='stats')return stats();if(S.tab==='verify')return verify();if(S.tab==='tk')return tkPanel();if(S.tab==='mytk')return myTkPanel();if(S.tab==='hr')return hrPanel();if(S.tab==='wr')return wrPanel();if(S.tab==='myfile')return myFilePanel();if(S.tab==='purch')return purchPanel();if(S.tab==='emps')return empsPanel();if(S.tab==='settings')return settingsPanel();
+function panel(){if(S.tab==='stats')return stats();if(S.tab==='verify')return verify();if(S.tab==='team')return teamPanel();if(S.tab==='tk')return tkPanel();if(S.tab==='mytk')return myTkPanel();if(S.tab==='hr')return hrPanel();if(S.tab==='wr')return wrPanel();if(S.tab==='myfile')return myFilePanel();if(S.tab==='purch')return purchPanel();if(S.tab==='emps')return empsPanel();if(S.tab==='settings')return settingsPanel();
  return `<div class="tools">
   <input type="search" id="q" placeholder="${L('ابحث بالرقم المرجعي أو الاسم أو التفاصيل','Search by reference, name or details')}" value="${esc(S.f.q)}" aria-label="${L('بحث','Search')}">
   <select id="ft" aria-label="${L('النوع','Type')}"><option value="">${L('كل الأنواع','All types')}</option>${Object.keys(TYPES).map(k=>`<option value="${k}"${S.f.type===k?' selected':''}>${L(TYPES[k].ar,TYPES[k].en)}</option>`).join('')}</select>
@@ -1182,9 +1183,9 @@ let H={key:'',busy:false,ok:false,files:{},docs:[],reps:[],notes:{}};
 const weekOf=ts=>{const d=new Date(ts);d.setHours(0,0,0,0);d.setDate(d.getDate()-d.getDay());return iso(d.getTime())};
 const weekTs=w=>d2ts(w),weekDue=w=>weekTs(w)+5*DAY,weekLbl=w=>`${fS(weekTs(w))} – ${fS(weekTs(w)+4*DAY)}`;
 const repId=(e,w)=>e+'_'+w,repOf=(e,w)=>H.reps.find(r=>r.emp===e&&r.week===w);
-const hrKey=()=>S.user+'|'+canManage();
+const hrKey=()=>S.user+'|'+canManage()+'|'+canWatch();
 function hrLoad(force){const k=hrKey();if(!S.user||H.busy||(!force&&H.key===k))return;H.busy=true;const all=canManage();
- BE.hrLoad(S.user,all).then(async x=>{try{x.tk=await BE.tkLoad(S.user,all)}catch(e){console.error(e);x.tk=[]}return x}).then(x=>{H=Object.assign({key:k,busy:false,ok:true},x);if(!S.tkLanded){S.tkLanded=true;if(S.tab==='mine'&&!S.modal&&tkOpen((x.tk||[]).filter(t=>t.emp===S.user)).length)S.tab='mytk'}if(k!==hrKey())hrLoad();else hrRefresh()}).catch(e=>{console.error(e);H={key:k,busy:false,ok:false,files:{},docs:[],reps:[],notes:{}};hrRefresh()})}
+ BE.hrLoad(S.user,all).then(async x=>{try{x.tk=await BE.tkLoad(S.user,all)}catch(e){console.error(e);x.tk=[]}if(canWatch()){try{x.team=await BE.teamLoad()}catch(e){console.error(e);x.team={reps:[],tk:[]}}}return x}).then(x=>{H=Object.assign({key:k,busy:false,ok:true},x);if(!S.tkLanded){S.tkLanded=true;if(S.tab==='mine'&&!S.modal&&tkOpen((x.tk||[]).filter(t=>t.emp===S.user)).length)S.tab='mytk'}if(k!==hrKey())hrLoad();else hrRefresh()}).catch(e=>{console.error(e);H={key:k,busy:false,ok:false,files:{},docs:[],reps:[],notes:{}};hrRefresh()})}
 const hrMine=()=>H.key===hrKey()?(H.files[S.user]||null):null;
 const docsOf=e=>H.docs.filter(d=>d.emp===e).sort((a,b)=>b.at-a.at),repsOf=e=>H.reps.filter(r=>r.emp===e).sort((a,b)=>a.week<b.week?1:-1);
 function hrScore(e){const f=H.files[e]||{},ds=docsOf(e);let n=0,t=0;const miss=[];HF.forEach(x=>{if(x[3]){t++;if(String(f[x[0]]==null?'':f[x[0]]).trim())n++;else miss.push(L(x[1],x[2]))}});HK.forEach(x=>{if(x[3]){t++;if(ds.some(d=>d.kind===x[0]))n++;else miss.push(L(x[1],x[2]))}});return {n,t,pct:Math.round(n/t*100),miss}}
@@ -1407,7 +1408,7 @@ async function fullFileBlob(k,onStep){await loadPdfLib();const PL=window.PDFLib,
 async function fullFilePDF(){const m=S.modal;if(!m||m.kind!=='pp'||m.busy)return;if(!window.html2canvas){toast(L('تعذّر تحميل مكتبة إنشاء الـPDF. تحقق من الاتصال ثم أعد فتح الصفحة.','The PDF library did not load. Check your connection and reopen the page.'));return}m.busy=true;renderOv();
  try{const e=emp(m.key),n=safeName('ملف-الموظف-كامل-'+e.no+'-'+e.ar)+'.pdf';await saveFile(n,await fullFileBlob(m.key,(i,t)=>toast(L(`جارٍ تجهيز الصفحة ${i} من ${t}…`,`Preparing page ${i} of ${t}…`))));toast(L('حُفظ الملف: ','Saved: ')+n)}catch(e){console.error(e);toast(L('تعذّر إنشاء الملف الكامل. حاول مرة أخرى.','The complete file could not be created. Try again.'))}m.busy=false;if(S.modal===m)renderOv()}
 const ppCache={};
-function ppMake(m,lv){if(m.t==='wr'){const r=H.reps.find(x=>x.id===m.id);return r?wrPaper(r,lv):''}return S.emps[m.key]?filePaper(m.key,lv):''}
+function ppMake(m,lv){if(m.t==='wr'){const r=H.reps.concat((H.team||{}).reps||[]).find(x=>x.id===m.id);return r?wrPaper(r,lv):''}return S.emps[m.key]?filePaper(m.key,lv):''}
 function ppHTML(m){const key=m.t+'|'+(m.id||m.key);if(ppCache[key]!=null)return ppMake(m,ppCache[key]);const host=document.createElement('div');host.style.cssText='position:fixed;left:-10000px;top:0;width:794px;height:1123px;overflow:hidden;visibility:hidden';document.body.appendChild(host);let pick='tight dense';
  for(const lv of ['','tight','tight dense']){host.innerHTML=ppMake(m,lv);const mn=host.querySelector('.dc-main');if(!mn)break;const kids=[...mn.children],gap=parseFloat(getComputedStyle(mn).rowGap)||0;if(kids.reduce((a,c)=>a+c.offsetHeight,0)+gap*(kids.length-1)<=mn.clientHeight-10){pick=lv;break}}
  host.remove();return ppMake(m,ppCache[key]=pick)}
@@ -1458,6 +1459,22 @@ async function tkImport(file){if(!file)return;let rows;try{await loadXLSX();cons
  rows.slice(hi+1).forEach(r=>{const ref=String(r[c.ref]||'').trim();if(!ref||seen[ref])return;seen[ref]=1;if(have[ref]){dup++;return}const dest=String(r[c.dest]||'').trim();items.push({ref,dest,po:c.po!=null?String(r[c.po]||'').trim():'',due:c.due!=null?(impDate(r[c.due])||''):'',nst:c.nst!=null?String(r[c.nst]||'').trim():'',rid:c.rid!=null?String(r[c.rid]||'').trim():'',emp:''})});
  S.modal={kind:'tki',items,dup,name:file.name};renderOv()}
 async function tkiSave(){tkiRead();const m=S.modal;if(m.busy)return;m.busy=true;renderOv();try{for(const t of m.items){const d={title:L('توريد الفاتورة','Delivery of invoice')+' '+t.ref+' '+L('إلى','to')+' '+t.dest,ref:t.ref,po:t.po,dest:t.dest,due:t.due,nst:t.nst,rid:t.rid,src:'nupco',emp:t.emp,by:S.user,at:now(),status:'open'};if(t.emp)d.assignedAt=now();await BE.tkAdd(d)}const n=m.items.length,a=m.items.filter(t=>t.emp).length;S.modal=null;toast(L(`حُفظت ${n} مهمة، منها ${a} مسندة.`,`Saved ${n} tasks, ${a} assigned.`));hrLoad(true)}catch(e){m.busy=false;console.error(e);toast(saveErr(e));renderOv()}}
+
+/* ---------- team follow-up (read-only) ---------- */
+const canWatch=()=>!!S.user&&!canManage()&&(S.user===R.ceo||(Array.isArray(R.watch)&&R.watch.includes(S.user)));
+function teamEmps(){const all=Object.values(S.emps).filter(e=>e.active!==false&&e.key!==S.user);if(S.user===R.ceo)return all;const out={},walk=k=>all.forEach(e=>{if(e.mgr===k&&!out[e.key]){out[e.key]=e;walk(e.key)}});walk(S.user);return Object.values(out)}
+function teamPanel(){if(H.key!==hrKey()){hrLoad();return `<p class="note">${L('جارٍ التحميل…','Loading…')}</p>`}
+ const T=H.team||{reps:[],tk:[]},es=teamEmps().sort((a,b)=>dpt(a).localeCompare(dpt(b))||nm(a).localeCompare(nm(b))),ks={};es.forEach(e=>ks[e.key]=1);
+ const tk=T.tk.filter(t=>ks[t.emp]),reps=T.reps.filter(r=>ks[r.emp]&&r.status==='sent'),w=weekOf(now()),open=tkOpen(tk),late=tk.filter(tkLate),doneW=tk.filter(t=>t.status==='done'&&weekOf(t.doneAt)===w);
+ const row=e=>{const mt=tk.filter(t=>t.emp===e.key),o=tkOpen(mt).length,lt=mt.filter(tkLate).length,d=mt.filter(t=>t.status==='done'&&weekOf(t.doneAt)===w).length,lr=reps.filter(r=>r.emp===e.key).sort((a,b)=>a.week<b.week?1:-1)[0];
+  return `<tr class="nohov"><td><b>${esc(nm(e))}</b><small>${esc([ttl(e),dpt(e)].filter(Boolean).join(' · '))}</small></td><td class="num">${o}${lt?` <span class="hchip bad">${L('متأخرة','Overdue')} ${lt}</span>`:''}</td><td class="num">${d}</td>
+  <td>${lr?`<span class="hchip ${lr.week===w?'ok':'mut'}">${L('أسبوع','Week of')} <span class="num">${weekLbl(lr.week)}</span></span> <button type="button" class="btn sm" data-act="pp-open" data-t="wr" data-id="${esc(lr.id)}">${L('عرض','View')}</button>`:`<span class="note">—</span>`}</td></tr>`};
+ const card=t=>`<div class="tkc ${tkLate(t)?'late':''}"><div class="hr-h"><b>${esc(t.title)}</b>${tkChip(t)}</div><small>${esc(nm(emp(t.emp)))}${tkMeta(t)?' · '+tkMeta(t):''}</small>${t.note?`<small>${esc(t.note)}</small>`:''}</div>`;
+ return `<div class="hr-top"><p class="note">${L('متابعة مهام الفريق وتقاريره الأسبوعية المسلَّمة. هذه الصفحة للاطلاع فقط؛ إسناد المهام وتعديل الملفات من الموارد البشرية.','Follow your team’s tasks and submitted weekly reports. This page is read-only; tasks and files are managed by HR.')}</p></div>
+ <div class="kpis"><div class="kpi"><span>${L('مهام مطلوبة','Open tasks')}</span><b class="num">${open.length}</b></div><div class="kpi"><span>${L('متأخرة','Overdue')}</span><b class="num">${late.length}</b></div><div class="kpi"><span>${L('أُنجزت هذا الأسبوع','Done this week')}</span><b class="num">${doneW.length}</b></div><div class="kpi"><span>${L('تقارير هذا الأسبوع','Reports this week')}</span><b class="num">${reps.filter(r=>r.week===w).length}</b></div></div>
+ ${es.length?`<div class="hr-wrap"><table class="hr-t"><thead><tr><th>${L('الموظف','Employee')}</th><th>${L('مهام مطلوبة','Open tasks')}</th><th>${L('أُنجزت هذا الأسبوع','Done this week')}</th><th>${L('آخر تقرير أسبوعي','Latest weekly report')}</th></tr></thead><tbody>${es.map(row).join('')}</tbody></table></div>`:`<div class="chart" style="margin-top:14px"><p class="note">${L('لا يوجد موظفون تحت إدارتك في النظام.','No employees report to you in the system.')}</p></div>`}
+ ${open.length?`<div class="chart" style="margin-top:14px"><h3>${L('المهام المطلوبة','Open tasks')} <span class="num">(${open.length})</span></h3>${open.slice().sort((a,b)=>tkLate(b)-tkLate(a)||String(a.due||'9').localeCompare(String(b.due||'9'))).slice(0,60).map(card).join('')}</div>`:''}
+ ${doneW.length?`<div class="chart" style="margin-top:14px"><h3>${L('أُنجزت هذا الأسبوع','Done this week')} <span class="num">(${doneW.length})</span></h3>${doneW.sort((a,b)=>b.doneAt-a.doneAt).slice(0,60).map(card).join('')}</div>`:''}`}
 /* ---------- supplier purchasing (admin + purchasing permission) ---------- */
 S.sups={};S.pos=[];S.psel=null;S.pdone=false;
 const PK=['po','pof','pit','psup','pxi'];
@@ -1769,6 +1786,7 @@ function fbBE(){
  const HC=n=>db.collection(n),qd=q=>q.docs.map(d=>Object.assign(d.data(),{id:d.id}));
  const TK=db.collection('tasks');
  const hrApi={
+  async teamLoad(){const [r,t]=await Promise.all([HC('wreports').where('status','==','sent').get(),TK.get()]);return {reps:qd(r),tk:qd(t)}},
   async tkLoad(u,all){const q=all?await TK.get():await TK.where('emp','==',u).get();return qd(q)},
   tkAdd(d){return TK.add(d)},tkPatch(id,p){return TK.doc(id).update(p)},
   async tkPutProof(id,parts){for(let i=0;i<parts.length;i++)await TK.doc(id).collection('parts').doc(String(i)).set({d:parts[i]})},
@@ -1813,6 +1831,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
  const MH=()=>M.hr||(M.hr={files:{},docs:{},parts:{},reps:{},notes:{}}),deny=()=>{throw {code:'permission-denied'}};
  const MT=()=>MH().tk||(MH().tk={}),own=()=>!!CFG.owner&&S.user===CFG.owner.toLowerCase();
  return {mock:true,login,resync:sync,
+  async teamLoad(){if(!canWatch())deny();const h=MH(),t=MT();return {reps:Object.keys(h.reps).map(id=>Object.assign(cl(h.reps[id]),{id})).filter(r=>r.status==='sent'),tk:Object.keys(t).map(id=>Object.assign(cl(t[id]),{id}))}},
   async tkLoad(u,all){const t=MT();all=all&&canManage();return Object.keys(t).map(id=>Object.assign(cl(t[id]),{id})).filter(x=>all||x.emp===u)},
   async tkAdd(d){if(!canManage())deny();MT()['t'+now().toString(36)+Math.random().toString(36).slice(2,6)]=d;persist()},
   async tkPatch(id,p){const t=MT();if(!t[id]||(!canManage()&&t[id].emp!==S.user))deny();t[id]=Object.assign({},t[id],p);persist()},
