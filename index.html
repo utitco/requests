@@ -743,7 +743,7 @@ function renderApp(){
  <main class="wrap">
   <section class="id">
    ${has?`<div class="who"><div class="av" aria-hidden="true">${esc(nm(me).split(' ').map(w=>w.replace(/^(Al-|ال)/,'')[0]).slice(0,2).join(S.lang==='ar'?' ':''))}</div>
-    <div><h1>${esc(nm(me))}</h1><p>${esc(ttl(me))} · ${esc(dpt(me))} · <span class="num">${esc(me.no)}</span></p><p>${L('تاريخ التعيين','Joined')}: ${fG(d2ts(me.hire))} · ${fH(d2ts(me.hire))}</p></div></div>
+    <div><h1>${esc(nm(me))}</h1><p>${ttl(me)?esc(ttl(me))+' · ':''}${esc(dpt(me))} · <span class="num">${esc(me.no)}</span></p>${me.hire?`<p>${L('تاريخ التعيين','Joined')}: ${fG(d2ts(me.hire))} · ${fH(d2ts(me.hire))}</p>`:''}</div></div>
    <div class="bal"><div class="lb"><span>${L('رصيد الإجازة السنوية','Annual leave balance')}</span><span><b class="num">${bal}</b> / <span class="num">${ANNUAL}</span> ${L('يوم','days')}</span></div><div class="meter" role="img" aria-label="${bal} / ${ANNUAL}"><i style="width:${Math.max(0,Math.min(ANNUAL,bal))/ANNUAL*100}%"></i></div></div>
    <button class="btn pri" data-act="new"${noRoute?' disabled':''}>${IC.plus}${L('طلب جديد','New request')}</button>`
    :`<div class="who"><div class="av" aria-hidden="true">${IC.doc}</div><div><h1>${L('مدير النظام','System administrator')}</h1><p class="num">${esc(S.user)}</p><p>${L('لم تُضِف نفسك بعد إلى قائمة الموظفين.','You have not added yourself to the employee list yet.')}</p></div></div>`}
@@ -888,7 +888,7 @@ function readForm(){const m=S.modal,f=$('#nform');if(!m||m.kind!=='new'||!f||!m.
  if(m.type==='purchase'){d.items=d.items.map((i,k)=>({name:v('iname'+k),qty:v('iqty'+k),price:v('iprice'+k)}));d.supplier=v('supplier');d.why=v('why')}
  else Object.keys(d).forEach(k=>{if(f.elements.namedItem(k))d[k]=v(k)})}
 async function submit(){readForm();const m=S.modal,t=m.type,d=m.d;m.errs=validate(t,d);if(Object.keys(m.errs).length){renderOv();const bad=$('#nform [aria-invalid=true], #nform .err');if(bad&&bad.scrollIntoView)bad.scrollIntoView({block:'center'});return}
- const meE=emp(S.user);let data;
+ const meE=emp(S.user);let data;if(t==='letter'&&(!meE.hire||!meE.tAr)){toast(L('لا يمكن إصدار خطاب التعريف قبل تسجيل المسمى الوظيفي وتاريخ التعيين في بياناتك. راجع الموارد البشرية.','A certificate cannot be issued until your job title and hire date are recorded. Contact HR.'));return}
  if(t==='leave')data={kind:d.kind,from:d.from,to:d.to,sub:d.sub,reason:d.reason.trim()};
  if(t==='custody')data={asset:d.asset.trim(),model:d.model.trim(),qty:Math.round(+d.qty),purpose:d.purpose.trim()};
  if(t==='purchase')data={items:d.items.map(i=>({name:i.name.trim(),qty:Math.round(+i.qty),price:Math.round(+i.price*100)/100})),supplier:d.supplier.trim(),why:d.why.trim()};
@@ -942,13 +942,13 @@ async function importFile(file){if(!file)return;let rows;
  body.forEach(x=>{const r=x[0],n=x[1],key=str(r,'email').toLowerCase(),bad=m=>errs.push({n,msg:m});
   if(!/^[^@\s]+@[^@\s]+$/.test(key)||!key.endsWith('@'+DOMAIN))return bad(L(`الإيميل يجب أن ينتهي بـ ‎@${DOMAIN}`,`Email must end in @${DOMAIN}`));
   if(seen[key])return bad(L('الإيميل مكرر في الملف','Email is repeated in the file'));
-  const ar=str(r,'ar'),no=str(r,'no'),deptAr=str(r,'deptAr'),tAr=str(r,'tAr'),miss=[];if(!ar)miss.push(IMP[1][1]);if(!no)miss.push(IMP[3][1]);if(!deptAr)miss.push(IMP[4][1]);if(!tAr)miss.push(IMP[6][1]);
+  const ar=str(r,'ar'),no=str(r,'no'),deptAr=str(r,'deptAr'),tAr=str(r,'tAr'),miss=[];if(!ar)miss.push(IMP[1][1]);if(!no)miss.push(IMP[3][1]);if(!deptAr)miss.push(IMP[4][1]);
   if(miss.length)return bad(L('حقول ناقصة: ','Missing: ')+miss.join('، '));
-  const hire=impDate(cell(r,'hire'));if(!hire)return bad(L('تاريخ التعيين ناقص أو بصيغة غير مفهومة (اكتبه مثل 2021-03-14)','Hire date is missing or unreadable (write it like 2021-03-14)'));
+  const hire=impDate(cell(r,'hire'));if(!hire&&str(r,'hire'))return bad(L('تاريخ التعيين ناقص أو بصيغة غير مفهومة (اكتبه مثل 2021-03-14)','Hire date is missing or unreadable (write it like 2021-03-14)'));
   const gv=impNorm(cell(r,'g')),g=['انثي','f','female','انثى'].includes(gv)?'f':['ذكر','m','male',''].includes(gv)?'m':null;if(!g)return bad(L('الجنس: اكتب ذكر أو أنثى','Gender: write male or female'));
   const mgr=str(r,'mgr').toLowerCase();if(mgr&&mgr===key)return bad(L('الموظف مدير لنفسه','Employee is their own manager'));if(mgr&&!inFile[mgr]&&!S.emps[mgr])return bad(L('إيميل المدير المباشر غير موجود في الملف ولا في النظام','Manager email is not in the file or the system'));
   const used=Math.max(0,Math.round(+cell(r,'used')||0)),sv=String(cell(r,'sal')).trim(),old=S.emps[key];
-  const data={ar,en:str(r,'en')||ar,no,deptAr,deptEn:str(r,'deptEn'),tAr,tEn:str(r,'tEn')||tAr,hire,g,mgr,used};if(!old)data.active=true;
+  const data={ar,en:str(r,'en')||ar,no,deptAr,deptEn:str(r,'deptEn'),tAr,tEn:str(r,'tEn')||tAr,hire,g,mgr,used};if(!old)data.active=true;if(old&&!tAr){delete data.tAr;delete data.tEn}if(old&&!hire)delete data.hire;
   const file={};let fbad='';HF.forEach(h=>{if(map[h[0]]==null)return;const v=cell(r,h[0]);if(v==null||String(v).trim()==='')return;if(h[4]==='date'){const dv=impDate(v);if(!dv)fbad=h[1];else file[h[0]]=dv}else if(h[4]==='number'){const nv=+String(v).replace(/,/g,'');if(!(nv>=0))fbad=h[1];else file[h[0]]=nv}else file[h[0]]=String(v).trim().slice(0,120)});
   if(fbad)return bad(L(`قيمة غير مفهومة في عمود «${fbad}» (التواريخ ميلادية مثل 2021-03-14، والمبالغ أرقام فقط)`,`Unreadable value in column “${fbad}” (dates Gregorian like 2021-03-14, amounts as numbers only)`));
   if(map.wr!=null){const wv=impNorm(cell(r,'wr'));if(wv)file.wr=['نعم','yes','y','1','true'].includes(wv)}
