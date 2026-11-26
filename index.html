@@ -538,6 +538,23 @@ button.kpi{font:inherit;color:inherit;text-align:start;cursor:pointer}
 button.kpi.on{outline:2px solid var(--brand,#557D6C);outline-offset:-2px}
 
 @media (min-width:720px){.tabs{flex-wrap:wrap;overflow-x:visible;row-gap:2px}.tab{padding:10px 12px}}
+.gor{display:flex;align-items:center;gap:10px;color:var(--ink-3);font-size:12.5px;margin:14px 0 10px;width:100%}
+.gor::before,.gor::after{content:"";flex:1;border-top:1px solid var(--line)}
+.stf{display:grid;gap:10px;width:100%;text-align:start}
+.stf h2{font-size:17px;margin:0}
+.stf .err:empty{display:none}
+.stf-links{display:flex;flex-wrap:wrap;gap:6px;justify-content:center}
+.lnk{background:none;border:0;padding:0;font:inherit;color:var(--brand);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+.wa-help a{color:var(--brand);font-weight:600}
+.sbanner{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:var(--wait-soft);border:1px solid var(--line);border-radius:12px;padding:10px 14px;margin:12px 0;font-weight:500}
+.sq{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:6px}
+.sq-h{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}
+.sq-h small{color:var(--ink-3)}
+.sq-ok{color:var(--ok);margin:0}
+.sq-a{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sq-a select{flex:1 1 220px;min-width:0}
+#attxf{padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;min-height:0}
+#attxf .sh-f{margin:0 -18px -18px}
 </style>
 </head>
 <body>
@@ -583,7 +600,42 @@ let R={hr:'',fin:'',ceo:''};
 const ghost=k=>({key:k,no:'—',ar:k||'—',en:k||'—',g:'m',deptAr:'—',deptEn:'—',tAr:'—',tEn:'—',hire:'2000-01-01',used:0,mgr:'',active:false});
 const emp=k=>S.emps[k]||ghost(k);
 const allEmps=()=>Object.values(S.emps).filter(e=>e.active!==false);
-const noAcc=k=>!!k&&String(k).indexOf('@')<0,noKey=no=>'noacc-'+String(no==null?'':no).trim().replace(/[^0-9A-Za-z_-]/g,''),keyLbl=k=>noAcc(k)?L('بدون حساب دخول','No sign-in account'):k;
+const noAcc=k=>!!k&&String(k).indexOf('@')<0,noKey=no=>'noacc-'+String(no==null?'':no).trim().replace(/[^0-9A-Za-z_-]/g,''),keyLbl=k=>noAcc(k)?L('بدون حساب دخول','No sign-in account'):isStaffKey(k)?L('يدخل برقم الهوية','Signs in with ID number'):k;
+const STAFF_DOM='emp.'+DOMAIN,isStaffKey=k=>!!k&&String(k).endsWith('@'+STAFF_DOM),staffEmail=(h,v)=>'s'+h+'.'+v+'@'+STAFF_DOM;
+async function staffHash(id){return (await sha('utit-staff:'+String(id).replace(/\D/g,''))).slice(0,20)}
+const WA_NO='966549242289',WA_TXT='0549242289',waNum=m=>{let d=String(m||'').replace(/\D/g,'');if(/^05\d{8}$/.test(d))d='966'+d.slice(1);else if(/^5\d{8}$/.test(d))d='966'+d;else if(/^00966/.test(d))d=d.slice(2);return /^9665\d{8}$/.test(d)?d:''};
+const waHelp=()=>`<p class="note wa-help">${L('تحتاج مساعدة؟ تواصل واتساب','Need help? WhatsApp')} <a href="https://wa.me/${WA_NO}" target="_blank" rel="noopener" dir="ltr" class="num">${WA_TXT}</a></p>`;
+const tsMs=t=>t&&t.toDate?t.toDate().getTime():(typeof t==='number'?t:0);
+function staffForm(){const r=S.staff==='reg';
+ return `<form id="stf" class="stf" novalidate><h2>${r?L('طلب دخول برقم الهوية','Request sign-in with your ID'):L('الدخول برقم الهوية','Sign in with your ID number')}</h2>
+ ${r?`<p class="note">${L('أول مرة أو نسيت كلمة المرور؟ اكتب بياناتك واختر كلمة مرور. يوصل طلبك للإدارة، وبعد ما يتأكدون منك تدخل فيها كل مرة.','First time, or forgot your password? Fill in your details and choose a password. Management verifies you, then you sign in with it every time.')}</p>`:''}
+ <div class="f"><label for="st-id">${L('رقم الهوية أو الإقامة','ID or Iqama number')}</label><input id="st-id" inputmode="numeric" autocomplete="username" maxlength="10" dir="ltr" required></div>
+ ${r?`<div class="f"><label for="st-nm">${L('اسمك','Your name')}</label><input id="st-nm" maxlength="60" autocomplete="name" required></div>`:''}
+ <div class="f"><label for="st-pw">${L('كلمة المرور','Password')}</label><input id="st-pw" type="password" autocomplete="${r?'new-password':'current-password'}" dir="ltr" required></div>
+ ${r?`<div class="f"><label for="st-pw2">${L('أعد كتابة كلمة المرور','Repeat the password')}</label><input id="st-pw2" type="password" autocomplete="new-password" dir="ltr" required><small class="note">${L('8 خانات على الأقل.','At least 8 characters.')}</small></div>`:''}
+ <p class="err" role="alert" id="st-err"></p>
+ <button type="submit" class="btn pri big">${r?L('إرسال طلب الدخول','Send request'):L('دخول','Sign in')}</button>
+ <p class="note stf-links">${r?`<button type="button" class="lnk" data-act="staff-open">${L('عندي حساب مفعّل','I already have an active account')}</button>`:`<button type="button" class="lnk" data-act="staff-reg">${L('أول مرة أو نسيت كلمة المرور؟','First time or forgot your password?')}</button>`} · <button type="button" class="lnk" data-act="staff-back">${L('الدخول بحساب Google','Google sign-in')}</button></p></form>${waHelp()}`}
+async function staffSubmit(){const r=S.staff==='reg',v=id=>(document.getElementById(id)||{}).value||'',er=document.getElementById('st-err'),btn=document.querySelector('#stf button[type=submit]'),err=t=>{if(er)er.textContent=t;if(btn)btn.disabled=false};
+ const id=v('st-id').replace(/\D/g,''),pw=v('st-pw'),nm0=v('st-nm').trim();
+ if(!/^[12]\d{9}$/.test(id))return err(L('رقم الهوية أو الإقامة 10 أرقام ويبدأ بـ 1 أو 2.','The ID is 10 digits and starts with 1 or 2.'));
+ if(!pw)return err(L('اكتب كلمة المرور.','Enter the password.'));
+ if(r){if(!nm0)return err(L('اكتب اسمك.','Enter your name.'));if(pw.length<8)return err(L('كلمة المرور 8 خانات على الأقل.','The password needs at least 8 characters.'));if(pw!==v('st-pw2'))return err(L('كلمتا المرور غير متطابقتين.','The passwords do not match.'))}
+ if(btn)btn.disabled=true;if(er)er.textContent='';
+ try{const h=await staffHash(id);if(r)await BE.staffRegister(h,pw,nm0.slice(0,60),id.slice(-4));else await BE.staffSignIn(h,pw)}
+ catch(x){console.error(x);const c=x&&x.code;err(c==='auth/too-many-requests'?L('محاولات كثيرة. انتظر شوي وحاول مرة ثانية.','Too many attempts. Wait a little and try again.'):c==='auth/weak-password'?L('كلمة المرور ضعيفة. اختر كلمة أطول.','The password is too weak.'):c==='auth/network-request-failed'?L('تحقق من الاتصال بالإنترنت.','Check your internet connection.'):r?L('تعذّر إرسال الطلب. حاول مرة ثانية.','Could not send the request. Try again.'):L('رقم الهوية أو كلمة المرور غير صحيحة. إذا أول مرة تدخل أو طلبك ما انوافق عليه للحين، اضغط «أول مرة أو نسيت كلمة المرور».','Wrong ID or password. If this is your first time, or your request is not approved yet, tap "First time or forgot your password".'))}}
+function staffWatchMine(){if(S._lw)return;S._lw=BE.staffMine(d=>{const was=S.myLreq&&S.myLreq.status;S.myLreq=d;if(d&&d.status==='approved'){if(S._lw){S._lw();S._lw=null}location.reload()}else if(!d||d.status!==was)render()})}
+function staffPending(out){const st=S.myLreq&&S.myLreq.status;return st==='rejected'?`<p><b>${L('ما تمت الموافقة على طلب الدخول','Your sign-in request was not approved')}</b></p><p class="note">${L('إذا تعتقد إن فيه خطأ تواصل مع الإدارة.','If you think this is a mistake, contact management.')}</p>${waHelp()}${out}`:`<p><b>${L('طلبك وصل للإدارة','Your request reached management')}</b></p><p class="note">${L('بعد ما يتأكدون منك تنفتح لك الصفحة تلقائياً. بعدها تدخل كل مرة برقم هويتك وكلمة المرور اللي اخترتها.','Once they verify you, this page opens by itself. After that, sign in with your ID and the password you chose.')}</p>${waHelp()}${out}`}
+function staffBanner(){const n=canManage()?(S.lreq||[]).length:0;return n?`<div class="sbanner" role="status"><span>${L(`${n===1?'طلب دخول':n+' طلبات دخول'} برقم الهوية بانتظار موافقتك`,`${n} ID sign-in request${n>1?'s':''} awaiting your approval`)}</span><button class="btn sm pri" data-act="staff-reqs">${L('مراجعة','Review')}</button></div>`:''}
+function sreqOv(m){const rs=(S.lreq||[]).slice().sort((a,b)=>tsMs(a.at)-tsMs(b.at)),mt=S.sMatch||{},cand=Object.values(S.emps).filter(e=>e.active!==false&&(noAcc(e.key)||isStaffKey(e.key))).sort((a,b)=>nm(a).localeCompare(nm(b)));
+ return `<div class="ov" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sq-t"><div class="sh-h"><h2 id="sq-t">${L('طلبات الدخول برقم الهوية','ID sign-in requests')}</h2><button class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div><div class="sh-b">
+ <p class="note">${L('قبل الموافقة تأكد إن الطالب هو الموظف نفسه: اتصل عليه أو كلّمه واتساب. بعد الموافقة يدخل برقم هويته وكلمة المرور اللي اختارها.','Before approving, make sure the requester is the employee: call or WhatsApp them. After approval they sign in with their ID and the password they chose.')}</p>
+ ${S.sMatch?'':`<p class="note">${L('جارٍ مطابقة رقم الهوية مع ملفات الموظفين…','Matching the ID with employee files…')}</p>`}
+ ${rs.length?rs.map(q=>{const hit=mt[q.h],k=hit&&S.emps[hit.key]&&(noAcc(hit.key)||isStaffKey(hit.key))?hit.key:'',e=k&&S.emps[k],mob=hit&&hit.mobile,wa=waNum(mob),t=tsMs(q.at);return `<div class="sq">
+  <div class="sq-h"><b>${esc(q.name||'—')}</b><small>${L('الهوية تنتهي بـ','ID ends in')} <span class="num" dir="ltr">${esc(q.last4||'')}</span>${t?' · '+fS(t)+' '+new Date(t).toLocaleTimeString(S.lang==='ar'?'ar-SA-u-nu-latn':'en-GB',{hour:'2-digit',minute:'2-digit'}):''}</small></div>
+  ${e?`<p class="sq-ok">${L('رقم الهوية مطابق لملف','The ID matches the file of')} <b>${esc(nm(e))}</b> <span class="num">(${esc(e.no||'')})</span>${isStaffKey(k)?' — '+L('عنده حساب من قبل، وهذا طلب كلمة مرور جديدة','already has an account; this is a new password'):''}</p>${mob?`<p class="note">${L('جواله في الملف','Mobile on file')} <span class="num" dir="ltr">${esc(mob)}</span>${wa?` · <a href="https://wa.me/${wa}" target="_blank" rel="noopener">${L('واتساب','WhatsApp')}</a>`:''} · <a href="tel:${esc(String(mob).replace(/[^\d+]/g,''))}">${L('اتصال','Call')}</a></p>`:''}`:S.sMatch?`<p class="err">${L('رقم الهوية هذا غير موجود في ملفات الموظفين. لا توافق إلا إذا تأكدت منه بنفسك.','This ID is not in any employee file. Approve only if you have verified it yourself.')}</p>`:''}
+  <div class="sq-a"><select id="sq-${esc(q.id)}" aria-label="${L('الموظف','Employee')}"><option value="">${L('اختر الموظف…','Choose the employee…')}</option>${cand.map(c=>`<option value="${esc(c.key)}" ${c.key===k?'selected':''}>${esc(nm(c))} — ${esc(c.no||'')}</option>`).join('')}</select><button class="btn sm pri" data-act="sreq-ok" data-id="${esc(q.id)}">${L('موافقة','Approve')}</button><button class="btn sm" data-act="sreq-no" data-id="${esc(q.id)}">${L('رفض','Reject')}</button></div></div>`}).join(''):`<p class="note">${L('لا توجد طلبات حالياً.','No requests right now.')}</p>`}
+ </div></div></div>`}
 
 const P=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
 const IC={
@@ -688,7 +740,7 @@ const asReal=f=>{const a=S.as,u=S.user;if(a){S.as=null;S.user=S.realUser}try{ret
 /* test mode: the owner uses the app as another employee. Live data stays subscribed as the owner; the view is narrowed here. */
 function viewApply(){if(!S.as||BE.mock)return;const u=S.user;
  if(S.reqs!==S.vReqs)S.rawReqs=S.reqs;if(S.sal!==S.vSal)S.rawSal=S.sal;if(S.sups!==S.vSups)S.rawSups=S.sups;if(S.pos!==S.vPos)S.rawPos=S.pos;
- const boss=isBoss(u);S.vReqs=S.reqs=S.rawReqs.filter(r=>boss||r.emp===u||r.empMgr===u||(r.approvers||[]).includes(u));
+ const boss=isBoss(u);S.vReqs=S.reqs=S.rawReqs.filter(r=>boss||r.emp===u||((S.emps[u]||{}).aliases||[]).includes(r.emp)||r.empMgr===u||(r.approvers||[]).includes(u));
  S.vSal=S.sal=canSeeSal()?S.rawSal:(S.rawSal[u]!=null?{[u]:S.rawSal[u]}:{});
  const cp=canPurch();S.vSups=S.sups=cp?S.rawSups:{};S.vPos=S.pos=cp?S.rawPos:[]}
 function actAs(key){if(!realOwner()||S.as||!S.emps[key]||key===S.user)return;S.realUser=S.user;S.as=key;S.user=key;S.tab='mine';S.modal=null;S.f={q:'',type:'',status:''};if(BE.resync)BE.resync();else viewApply();render();window.scrollTo(0,0);toast(L(`أنت الآن تستخدم حساب ${nm(emp(key))}.`,`You are now using ${nm(emp(key))}’s account.`))}
@@ -717,8 +769,9 @@ function render(){renderApp();renderOv()}
 function renderApp(){
  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==='ar'?'rtl':'ltr';
  const app=$('#app'),out=`<button class="btn" data-act="signout">${L('تسجيل الخروج','Sign out')}</button>`,who=S.user?`<p class="note num">${esc(S.user)}</p>`:'';
- if(S.auth==='out'){S.modal=null;app.innerHTML=gate(`<p>${L('ادخل بحساب Google الخاص بالشركة','Sign in with your company Google account')} <span class="num">@${DOMAIN}</span></p><button class="btn pri big" data-act="signin">${L('الدخول بحساب Google','Sign in with Google')}</button>${S.loginErr?`<p class="err">${esc(S.loginErr)}</p>`:''}`);return}
+ if(S.auth==='out'){S.modal=null;if(S.staff){app.innerHTML=gate(staffForm());return}app.innerHTML=gate(`<p>${L('ادخل بحساب Google الخاص بالشركة','Sign in with your company Google account')} <span class="num">@${DOMAIN}</span></p><button class="btn pri big" data-act="signin">${L('الدخول بحساب Google','Sign in with Google')}</button>${S.loginErr?`<p class="err">${esc(S.loginErr)}</p>`:''}<div class="gor"><span>${L('أو','or')}</span></div><button class="btn big" data-act="staff-open">${L('الدخول برقم الهوية','Sign in with your ID number')}</button><p class="note">${L('للموظفين اللي ما عندهم إيميل شركة','For employees without a company email')}</p>${waHelp()}`);return}
  if(S.auth==='denied'){S.modal=null;app.innerHTML=gate(`<p><b>${L('هذا الحساب من خارج الشركة','This account is outside the company')}</b></p>${who}<p class="note">${L('الدخول متاح لحسابات','Access is limited to')} <span class="num">@${DOMAIN}</span> ${L('فقط. سجّل الخروج وادخل بإيميل الشركة.','accounts. Sign out and use your company email.')}</p>${out}`);return}
+ if(S.auth==='in'&&isStaffKey(S.user)&&(S.err==='permission-denied'||(S.ready&&!S.emps[S.user]))){S.modal=null;staffWatchMine();app.innerHTML=gate(staffPending(out));return}
  if(S.err){S.modal=null;app.innerHTML=gate(S.err==='permission-denied'?`<p><b>${L('حسابك غير مفعّل في النظام','Your account is not activated')}</b></p>${who}<p class="note">${L('راجع الموارد البشرية لإضافتك إلى قائمة الموظفين، ثم حدّث الصفحة.','Ask HR to add you to the employee list, then reload the page.')}</p>${out}`:`<p><b>${L('تعذّر الاتصال بقاعدة البيانات','Could not reach the database')}</b></p><p class="note">${L('تحقق من الاتصال ثم حدّث الصفحة.','Check your connection and reload the page.')} <span class="num">(${esc(S.err)})</span></p>${out}`);return}
  if(S.auth!=='in'||!S.ready){S.modal=null;app.innerHTML=gate(`<p class="note">${L('جارٍ التحميل…','Loading…')}</p>`);return}
  const has=!!S.emps[S.user];
@@ -760,6 +813,7 @@ function renderApp(){
    :`<div class="who"><div class="av" aria-hidden="true">${IC.doc}</div><div><h1>${L('مدير النظام','System administrator')}</h1><p class="num">${esc(S.user)}</p><p>${L('لم تُضِف نفسك بعد إلى قائمة الموظفين.','You have not added yourself to the employee list yet.')}</p></div></div>`}
   </section>
   ${setup}
+  ${staffBanner()}
   <div class="tabs" role="tablist">${tabs.map(t=>`<button class="tab" role="tab" aria-selected="${S.tab===t[0]}" data-act="tab" data-tab="${t[0]}">${t[1]}${t[2]?`<span class="cnt num" title="${L('طلبات معلقة','Pending')}">${t[2]}</span>`:''}</button>`).join('')}</div>
   <section class="panel" id="panel">${panel()}</section>
  </main>
@@ -822,7 +876,7 @@ function verify(){const refs=S.reqs.slice(0,3).map(r=>r.ref);let res='';
 /* ---------- overlays ---------- */
 function renderOv(){const m=S.modal,el=$('#ov');if(!m){el.innerHTML='';document.body.style.overflow='';return}
  document.body.style.overflow='hidden';
- el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):m.kind==='hrf'?hrOv(m):m.kind==='wt'?wtOv(m):m.kind==='tki'||m.kind==='tkn'?tkOv(m):m.kind==='attcfg'?attCfgOv(m):m.kind==='attfix'?attFixOv(m):m.kind==='attdn'?attDnOv(m):m.kind==='pp'?ppView(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
+ el.innerHTML=m.kind==='detail'?detail(m):m.kind==='new'?newForm(m):m.kind==='emp'?empForm(m):m.kind==='imp'?impView(m):PK.includes(m.kind)?purchOv(m):m.kind==='hrf'?hrOv(m):m.kind==='wt'?wtOv(m):m.kind==='tki'||m.kind==='tkn'?tkOv(m):m.kind==='attcfg'?attCfgOv(m):m.kind==='attfix'?attFixOv(m):m.kind==='sreq'?sreqOv(m):m.kind==='attdn'?attDnOv(m):m.kind==='pp'?ppView(m):docView(m);if(!S.modal){el.innerHTML='';document.body.style.overflow='';return}
  if(m.kind==='doc'||m.kind==='pp')fit();}
 function detailBody(r,l){const d=r.d,A=(l||S.lang)==='ar',kv=p=>`<dl class="kv">${p.filter(Boolean).map(x=>`<dt>${x[0]}</dt><dd>${x[1]}</dd>`).join('')}</dl>`;
  const dt=s=>`${fG(d2ts(s))} <small class="note">· ${fH(d2ts(s))}</small>`;
@@ -984,11 +1038,11 @@ function blankEmp(){return {email:'',ar:'',en:'',no:'',attPin:'',attAlt:'',attSt
 function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  const inp=(n,type,v,ex)=>`<input type="${type}" id="f-${n}" name="${n}" value="${esc(v)}"${inv(n)}${type==='text'?' maxlength="80"':''} ${ex||''}>`;
  const sel=(n,opts,v)=>`<select id="f-${n}" name="${n}">${opts.map(o=>`<option value="${esc(o[0])}"${String(v)===String(o[0])?' selected':''}>${esc(o[1])}</option>`).join('')}</select>`;
- const mgrs=[['','—']].concat(allEmps().filter(e=>e.key!==m.key&&!noAcc(e.key)).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)]));
+ const mgrs=[['','—']].concat(allEmps().filter(e=>e.key!==m.key&&!noAcc(e.key)&&!isStaffKey(e.key)).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)]));
  return `<div class="ov mid" data-act="close-bg"><form class="sheet" id="eform" role="dialog" aria-modal="true" novalidate>
   <div class="sh-h"><h2>${m.key?L('تعديل بيانات موظف','Edit employee'):L('إضافة موظف','Add employee')}</h2><button type="button" class="x" data-act="close" aria-label="${L('إغلاق','Close')}">${IC.x}</button></div>
   <div class="sh-b"><div class="grid2">
-   ${fld(m,'email',L('إيميل الشركة','Company email'),inp('email','text',d.email,(m.key&&!noAcc(m.key)?'disabled ':'')+`placeholder="name@${DOMAIN}" dir="ltr"`),true,m.key&&!noAcc(m.key)?L('الإيميل لا يتغير بعد الإضافة.','The email cannot change after adding.'):m.key?L('هذا الموظف بدون حساب دخول. اكتب إيميل الشركة هنا إذا أردت فتح حساب له.','This employee has no sign-in account. Enter a company email here to open one.'):L('اتركه فارغاً لموظف لا يحتاج الدخول إلى النظام.','Leave empty for an employee who does not need to sign in.'))}
+   ${fld(m,'email',L('إيميل الشركة','Company email'),inp('email','text',d.email,(m.key&&!noAcc(m.key)&&!isStaffKey(m.key)?'disabled ':'')+`placeholder="name@${DOMAIN}" dir="ltr"`),true,m.key&&isStaffKey(m.key)?L('يدخل برقم الهوية. إذا صار له إيميل شركة اكتبه هنا.','Signs in with an ID number. If they get a company email, enter it here.'):m.key&&!noAcc(m.key)?L('الإيميل لا يتغير بعد الإضافة.','The email cannot change after adding.'):m.key?L('هذا الموظف بدون حساب دخول. اكتب إيميل الشركة هنا إذا أردت فتح حساب له.','This employee has no sign-in account. Enter a company email here to open one.'):L('اتركه فارغاً لموظف لا يحتاج الدخول إلى النظام.','Leave empty for an employee who does not need to sign in.'))}
    ${fld(m,'ar',L('الاسم بالعربي','Name in Arabic'),inp('ar','text',d.ar))}${fld(m,'en',L('الاسم بالإنجليزي','Name in English'),inp('en','text',d.en,'dir="ltr"'))}
    ${fld(m,'no',L('الرقم الوظيفي','Employee no.'),inp('no','text',d.no,'dir="ltr"'))}${fld(m,'attPin',L('رقم البصمة في الجهاز','Device (fingerprint) no.'),inp('attPin','text',d.attPin,'dir="ltr" inputmode="numeric"'))}${fld(m,'attAlt',L('أرقام بصمة إضافية (إن كان مسجلاً بأكثر من رقم)','Extra device numbers (if enrolled more than once)'),inp('attAlt','text',d.attAlt,'dir="ltr" placeholder="1, 25"'))}${fld(m,'attStart',L('بداية دوامه (إن اختلف عن العام)','His start time (if different)'),inp('attStart','time',d.attStart))}${fld(m,'attEnd',L('نهاية دوامه (إن اختلفت)','His end time (if different)'),inp('attEnd','time',d.attEnd))}${fld(m,'attFree',L('الالتزام بالبصمة','Attendance tracking'),sel('attFree',[['no',L('يُحسب تأخيره وغيابه','Late and absence counted')],['yes',L('غير مُلزَم (لا يُحسب تأخير ولا غياب)','Exempt (no late or absence)')]],d.attFree))}${fld(m,'hire',L('تاريخ التعيين','Date of joining'),inp('hire','date',d.hire))}
    ${fld(m,'deptAr',L('القسم بالعربي','Department in Arabic'),inp('deptAr','text',d.deptAr))}${fld(m,'deptEn',L('القسم بالإنجليزي','Department in English'),inp('deptEn','text',d.deptEn,'dir="ltr"'))}
@@ -1004,7 +1058,7 @@ function empForm(m){const d=m.d,inv=n=>m.errs[n]?' aria-invalid="true"':'';
  </form></div>`}
 function readEmp(){const m=S.modal,f=$('#eform');if(!m||m.kind!=='emp'||!f)return;Object.keys(m.d).forEach(k=>{if(f.elements[k])m.d[k]=f.elements[k].value})}
 async function saveEmp(){readEmp();const m=S.modal,d=m.d,e={},req=L('هذا الحقل مطلوب','This field is required');
-  const em=String(d.email||'').trim().toLowerCase(),conv=m.key&&noAcc(m.key)&&em?em:'';let key=m.key||em;
+  const em=String(d.email||'').trim().toLowerCase(),conv=m.key&&(noAcc(m.key)||isStaffKey(m.key))&&em?em:'';let key=m.key||em;
   if(!m.key&&!em){key=noKey(d.no);if(key.length>=7&&S.emps[key])e.no=L('هذا الرقم الوظيفي مسجَّل من قبل','This employee number is already used')}
   else if(!m.key||conv){const k2=conv||key;if(!/^[^@\s]+@[^@\s]+$/.test(k2)||!k2.endsWith('@'+DOMAIN))e.email=L(`اكتب إيميلاً ينتهي بـ ‎@${DOMAIN}`,`Enter an email ending in @${DOMAIN}`);else if(S.emps[k2])e.email=L('هذا الإيميل مضاف من قبل','This email is already added');else if(conv&&!ownerOnly())e.email=L('فتح حساب لموظف بدون حساب يتم من حساب مدير النظام','Opening an account is done from the system admin account')}
   ['ar','no'].forEach(k=>{if(!String(d[k]).trim())e[k]=req});{const ap=String(d.attPin||'').trim(),al=String(d.attAlt||'').split(/[\s,،]+/).filter(Boolean),oth=p=>allEmps().find(x=>x.key!==m.key&&pinsOf(x).includes(p));if(ap&&oth(ap))e.attPin=L('رقم البصمة مستخدم لموظف آخر: ','This device number belongs to ')+nm(oth(ap));const bad=al.find(p=>oth(p)||!/^\d+$/.test(p));if(bad)e.attAlt=oth(bad)?L(`الرقم ${bad} مستخدم لـ `,`Number ${bad} belongs to `)+nm(oth(bad)):L('أرقام فقط، مفصولة بفاصلة','Digits only, comma separated');if(al.length&&!ap)e.attPin=L('اكتب الرقم الأساسي أولاً','Enter the main number first')}if(!String(d.en).trim())d.en=d.ar;
@@ -1016,7 +1070,7 @@ async function saveEmp(){readEmp();const m=S.modal,d=m.d,e={},req=L('هذا ال
  let sal;if(canSeeSal()){const v=String(d.sal).trim();if(v!==String(m.sal0==null?'':m.sal0))sal=v===''?null:Math.round(+v)}
   try{if(conv){await BE.empMove(m.key,conv);key=conv}await BE.saveEmployee(key,data,sal);S.modal=null;if(conv)hrLoad(true);toast(L('حُفظت بيانات الموظف.','Employee saved.'))}catch(x){m.busy=false;console.error(x);toast(saveErr(x))}
  render()}
-function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().filter(e=>!noAcc(e.key)).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)+' — '+ttl(e)])).map(o=>`<option value="${esc(o[0])}"${o[0]===v?' selected':''}>${esc(o[1])}</option>`).join('');
+function settingsPanel(){const opts=v=>[['','—']].concat(allEmps().filter(e=>!noAcc(e.key)&&!isStaffKey(e.key)).sort((a,b)=>nm(a).localeCompare(nm(b))).map(e=>[e.key,nm(e)+' — '+ttl(e)])).map(o=>`<option value="${esc(o[0])}"${o[0]===v?' selected':''}>${esc(o[1])}</option>`).join('');
  const f=(n,label,v,ex)=>`<div class="f"><label for="s-${n}">${label}</label><input type="text" id="s-${n}" name="${n}" value="${esc(v)}" maxlength="110" ${ex||''}></div>`;
  return `<form id="sform" class="settings" novalidate>
   <div class="chart"><h3>${L('المعتمدون','Approvers')}</h3><p class="note">${L('من يعتمد مرحلة الموارد البشرية والمالية في كل الطلبات، ومن يعتمد طلبات المدراء أنفسهم. المدير المباشر يُحدَّد لكل موظف من بياناته.','Who approves the HR and Finance stages of every request, and who approves the managers’ own requests. The line manager is set on each employee.')}</p>
@@ -1500,7 +1554,7 @@ const AUD={saveEmployee:k=>['حفظ بيانات موظف',k],importEmployees:it
  repDel:id=>['حذف تقرير أسبوعي',id],reqDel:id=>['حذف طلب',((S.reqs||[]).find(r=>r.id===id)||{}).ref||id],addRequest:r=>['تقديم طلب',r.ref],
  updateRequest:(id,p)=>[p.status==='rejected'?'رفض طلب':p.status?'اعتماد نهائي لطلب':p.stages?'اعتماد مرحلة في طلب':'تحديث طلب',((S.reqs||[]).find(r=>r.id===id)||{}).ref||id],
  tkAdd:d=>['إضافة مهمة',(d.emp?d.emp+' · ':'')+d.title],tkPatch:(id,p)=>p.status==='done'?['تسجيل إنجاز مهمة',id]:p.status?['إعادة فتح مهمة',id]:('emp' in p)?['إسناد مهمة',p.emp||'—']:null,tkDel:id=>['حذف مهمة',id],
- attMap:(k,p)=>['ربط رقم بصمة بموظف',k+' · '+p],attAlt:(k,a)=>['أرقام بصمة إضافية لموظف',k+' · '+(a.join('، ')||'—')],attFix:o=>['تصحيح بصمات حضور',o.map(x=>x.create?'إضافة '+x.data.pin+' · '+x.data.t.slice(0,16):(x.data.del?'حذف ':'تعديل ')+(x.lbl||x.id)+(x.data.ed?' ← '+x.data.ed.slice(11,16):'')).join(' · ')+' — '+((o[0]||{}).data||{}).why],attDev:(sn,p)=>[p&&p.allowed?'اعتماد جهاز بصمة':'تسمية جهاز بصمة',sn],attSaveCfg:()=>['تعديل أوقات الدوام',''],
+ attMap:(k,p)=>['ربط رقم بصمة بموظف',k+' · '+p],staffDecide:(q,k,ok)=>[ok?'موافقة على دخول برقم الهوية':'رفض طلب دخول برقم الهوية',(q.name||'')+' · '+L('الهوية تنتهي بـ ','ID ending ')+(q.last4||'')+(k&&!isStaffKey(k)?' → '+((S.emps[k]&&nm(S.emps[k]))||k):'')],attAlt:(k,a)=>['أرقام بصمة إضافية لموظف',k+' · '+(a.join('، ')||'—')],attFix:o=>['تصحيح بصمات حضور',o.map(x=>x.create?'إضافة '+x.data.pin+' · '+x.data.t.slice(0,16):(x.data.del?'حذف ':'تعديل ')+(x.lbl||x.id)+(x.data.ed?' ← '+x.data.ed.slice(11,16):'')).join(' · ')+' — '+((o[0]||{}).data||{}).why],attDev:(sn,p)=>[p&&p.allowed?'اعتماد جهاز بصمة':'تسمية جهاز بصمة',sn],attSaveCfg:()=>['تعديل أوقات الدوام',''],
  savePurch:c=>['حفظ في مشتريات المورّدين',c],delPurch:c=>['حذف من مشتريات المورّدين',c],delSupplier:()=>['حذف مورّد',''],importPurch:()=>['استيراد بيانات المشتريات','']};
 function audWrap(){Object.keys(AUD).forEach(n=>{const o=BE[n];if(typeof o!=='function')return;BE[n]=async function(){const r=await o.apply(BE,arguments);if(!S.audMute){try{const x=AUD[n].apply(null,arguments);if(x)logA(x[0],x[1])}catch(e){}}return r}})}
 const AUDACT={'hr-open':el=>['فتح ملف موظف',el.dataset.key],'hr-dl':el=>{const d=(H.docs||[]).find(d=>d.id===el.dataset.id)||{};return ['تنزيل مستند',(d.emp||'')+' · '+(d.name||'')]},'hr-zip':()=>['تنزيل ملفات كل الموظفين (ZIP)',''],'hr-zip1':()=>['تنزيل ملف موظف (ZIP)',(S.modal||{}).key],
@@ -1823,7 +1877,11 @@ const ACT={
  'tk-new'(){S.modal={kind:'tkn'};renderOv()},
  'aud-refresh'(){audLoad(true)},
  'att-day'(el){const d=S.attD||iso(now());S.attD=iso(d2ts(d)+(+el.dataset.n)*DAY);renderApp()},'att-today'(){S.attD=iso(now());renderApp()},'att-refresh'(){attLoad(true,S.attD||iso(now()),S.attD||iso(now()))},
- 'att-f'(el){S.attF=S.attF===el.dataset.f?'':el.dataset.f;renderApp()},'att-xlsx'(){attXlsx()},'att-fix'(el){if(!canManage())return;S.modal={kind:'attfix',key:el.dataset.key,d:S.attD||iso(now())};renderOv()},'att-cfg'(){S.modal={kind:'attcfg',d:attCfg()};renderOv()},
+ 'att-f'(el){S.attF=S.attF===el.dataset.f?'':el.dataset.f;renderApp()},'att-xlsx'(){attXlsx()},'staff-open'(){S.staff='login';render();setTimeout(()=>{const x=document.getElementById('st-id');if(x)x.focus()},0)},'staff-reg'(){S.staff='reg';render();setTimeout(()=>{const x=document.getElementById('st-id');if(x)x.focus()},0)},'staff-back'(){S.staff=null;render()},
+ 'staff-reqs'(){if(!canManage())return;S.modal={kind:'sreq'};renderOv();BE.staffIdMap().then(mp=>{S.sMatch=mp;if(S.modal&&S.modal.kind==='sreq')renderOv()}).catch(e=>{console.error(e);S.sMatch={};if(S.modal&&S.modal.kind==='sreq')renderOv()})},
+ async 'sreq-ok'(el){const q=(S.lreq||[]).find(x=>x.id===el.dataset.id),k=(document.getElementById('sq-'+el.dataset.id)||{}).value;if(!q||!canManage())return;if(!k){toast(L('اختر الموظف أولاً.','Choose the employee first.'));return}if(S.emps[q.email]){toast(L('هذا الحساب مربوط من قبل.','This account is already linked.'));return}
+  el.disabled=true;try{await BE.staffDecide(q,k,true);toast(L('تمت الموافقة، يقدر يدخل الحين.','Approved. They can sign in now.'));S.sMatch=null;hrLoad(true);if(S.modal&&S.modal.kind==='sreq')BE.staffIdMap().then(mp=>{S.sMatch=mp;renderOv()}).catch(()=>{})}catch(x){console.error(x);toast(saveErr(x));el.disabled=false}},
+ async 'sreq-no'(el){const q=(S.lreq||[]).find(x=>x.id===el.dataset.id);if(!q||!canManage())return;el.disabled=true;try{await BE.staffDecide(q,'',false);toast(L('تم رفض الطلب.','Request rejected.'))}catch(x){console.error(x);toast(saveErr(x));el.disabled=false}},'att-fix'(el){if(!canManage())return;S.modal={kind:'attfix',key:el.dataset.key,d:S.attD||iso(now())};renderOv()},'att-cfg'(){S.modal={kind:'attcfg',d:attCfg()};renderOv()},
  async 'att-allow'(el){try{await BE.attDev(el.dataset.sn,{allowed:true});if(!attCfg().since){const c=Object.assign(attCfg(),{since:iso(now())});await BE.attSaveCfg(c);S.attCfg=c}toast(L('اعتُمد الجهاز. يبدأ استقبال بصماته خلال دقائق.','Device approved. Its punches start arriving within minutes.'));attLoad(true)}catch(e){console.error(e);toast(saveErr(e))}},
  'att-dname'(el){S.modal={kind:'attdn',sn:el.dataset.sn,v:((ATT.dev.find(x=>x.sn===el.dataset.sn)||{}).name)||''};renderOv()},'aud-xlsx'(){audXlsx()},'bk-full'(){fullBackup()},
  'wr-tk'(el){wrRead();const d=S.wr,w=d.week,have=d.done.map(x=>x.t.trim());tkMine().filter(t=>t.status==='done'&&weekOf(t.doneAt)===w&&!have.includes(t.title)&&(el.dataset.id==='*'||t.id===el.dataset.id)).forEach(t=>{const e=d.done.find(x=>!x.t.trim());if(e){e.t=t.title;e.st='done'}else d.done.push({t:t.title,st:'done'})});renderApp()},
@@ -1846,7 +1904,7 @@ const ACT={
  'as-back'(){actBack()},
  'stamp-del'(){BE.saveConfig('company',{stamp:''}).then(()=>toast(L('أُزيل الختم.','Stamp removed.'))).catch(e=>toast(saveErr(e)))},
  'emp-new'(){S.modal={kind:'emp',key:null,d:blankEmp(),errs:{},sal0:null};renderOv()},
- 'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:noAcc(e.key)?'':e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',attPin:e.attPin||'',attAlt:(e.attAlt||[]).join(', '),attStart:e.attStart||'',attEnd:e.attEnd||'',attFree:e.attFree?'yes':'no',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||'',g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
+ 'emp-edit'(el){const e=S.emps[el.dataset.key];if(!e)return;const s=S.sal[e.key];S.modal={kind:'emp',key:e.key,errs:{},sal0:s==null?null:s,d:Object.assign(blankEmp(),{email:noAcc(e.key)||isStaffKey(e.key)?'':e.key,ar:e.ar||'',en:e.en||'',no:e.no||'',attPin:e.attPin||'',attAlt:(e.attAlt||[]).join(', '),attStart:e.attStart||'',attEnd:e.attEnd||'',attFree:e.attFree?'yes':'no',deptAr:e.deptAr||'',deptEn:e.deptEn||'',tAr:e.tAr||'',tEn:e.tEn||'',hire:e.hire||'',g:e.g||'m',mgr:e.mgr||'',used:String(e.used||0),sal:s==null?'':String(s),active:e.active===false?'no':'yes',admin:e.admin?'yes':'no',purch:e.purch?'yes':'no'})};renderOv()},
  backup(){backup()},
  'p-toggle'(){S.pdone=!S.pdone;render()},
  'p-xlsx'(){purchXlsx()},
@@ -1903,7 +1961,7 @@ document.addEventListener('input',ev=>{const t=ev.target;
  else if(t.id==='vq'){S.vq=t.value}
  else if(t.id==='note'){S.modal.note=t.value}
  else if(t.closest('#nform')){readForm();const lv=$('#live');if(lv){const h=liveBox(S.modal.type,S.modal.d);lv.innerHTML=h;lv.hidden=!h}}});
-document.addEventListener('submit',ev=>{ev.preventDefault();if(ev.target.id==='nform')submit();else if(ev.target.id==='eform')saveEmp();else if(ev.target.id==='sform')saveSettings();else if(ev.target.id==='hrform')hrSave();else if(ev.target.id==='tkiform')tkiSave();else if(ev.target.id==='attcf')attCfgSave();else if(ev.target.id==='attxf')attFixSave();else if(ev.target.id==='attdnf'){const v=document.getElementById('ad-name').value.trim(),sn=S.modal.sn;BE.attDev(sn,{name:v}).then(()=>{S.modal=null;render();attLoad(true)}).catch(e=>{console.error(e);toast(saveErr(e))})}else if(ev.target.id==='tknform'){const f=ev.target,ti=f.elements.namedItem('title').value.trim(),e=f.elements.namedItem('emp').value,du=f.elements.namedItem('due').value;if(!ti){toast(L('اكتب المهمة.','Enter the task.'));return}const d={title:ti,ref:'',po:'',dest:'',due:du,src:'manual',emp:e,by:S.user,at:now(),status:'open'};if(e)d.assignedAt=now();BE.tkAdd(d).then(()=>{S.modal=null;toast(L('أُضيفت المهمة.','Task added.'));hrLoad(true)}).catch(x=>{console.error(x);toast(saveErr(x))})}else if(ev.target.id==='wtform'){const v=document.querySelector('#wt-text').value;BE.saveConfig('wrtasks',{text:v}).then(()=>{S.modal=null;toast(L('حُفظت المهام الجاهزة.','Ready-made tasks saved.'));hrLoad(true)}).catch(e=>{console.error(e);toast(saveErr(e))})}else if(ev.target.id==='wrform')wrSave(true);else if(ev.target.id==='pofform')savePof();else if(ev.target.id==='pitform')savePit();else if(ev.target.id==='psupform')savePsup();else if(ev.target.id==='payform'){const a=+pval('payform','amt'),dt=pval('payform','date'),nt=pval('payform','note');if(!(a>0)){toast(L('أدخل مبلغ الدفعة.','Enter the payment amount.'))}else poPatch(d=>{d.pays.push({amt:Math.round(a*100)/100,date:dt,note:nt})},L('أُضيفت الدفعة.','Payment added.'))}else if(ev.target.id==='vform'){S.vq=$('#vq').value;doVerify()}});
+document.addEventListener('submit',ev=>{ev.preventDefault();if(ev.target.id==='nform')submit();else if(ev.target.id==='eform')saveEmp();else if(ev.target.id==='sform')saveSettings();else if(ev.target.id==='hrform')hrSave();else if(ev.target.id==='tkiform')tkiSave();else if(ev.target.id==='attcf')attCfgSave();else if(ev.target.id==='attxf')attFixSave();else if(ev.target.id==='stf')staffSubmit();else if(ev.target.id==='attdnf'){const v=document.getElementById('ad-name').value.trim(),sn=S.modal.sn;BE.attDev(sn,{name:v}).then(()=>{S.modal=null;render();attLoad(true)}).catch(e=>{console.error(e);toast(saveErr(e))})}else if(ev.target.id==='tknform'){const f=ev.target,ti=f.elements.namedItem('title').value.trim(),e=f.elements.namedItem('emp').value,du=f.elements.namedItem('due').value;if(!ti){toast(L('اكتب المهمة.','Enter the task.'));return}const d={title:ti,ref:'',po:'',dest:'',due:du,src:'manual',emp:e,by:S.user,at:now(),status:'open'};if(e)d.assignedAt=now();BE.tkAdd(d).then(()=>{S.modal=null;toast(L('أُضيفت المهمة.','Task added.'));hrLoad(true)}).catch(x=>{console.error(x);toast(saveErr(x))})}else if(ev.target.id==='wtform'){const v=document.querySelector('#wt-text').value;BE.saveConfig('wrtasks',{text:v}).then(()=>{S.modal=null;toast(L('حُفظت المهام الجاهزة.','Ready-made tasks saved.'));hrLoad(true)}).catch(e=>{console.error(e);toast(saveErr(e))})}else if(ev.target.id==='wrform')wrSave(true);else if(ev.target.id==='pofform')savePof();else if(ev.target.id==='pitform')savePit();else if(ev.target.id==='psupform')savePsup();else if(ev.target.id==='payform'){const a=+pval('payform','amt'),dt=pval('payform','date'),nt=pval('payform','note');if(!(a>0)){toast(L('أدخل مبلغ الدفعة.','Enter the payment amount.'))}else poPatch(d=>{d.pays.push({amt:Math.round(a*100)/100,date:dt,note:nt})},L('أُضيفت الدفعة.','Payment added.'))}else if(ev.target.id==='vform'){S.vq=$('#vq').value;doVerify()}});
 document.addEventListener('keydown',ev=>{if(ev.key==='Escape'&&S.modal)ACT.close()});
 window.addEventListener('resize',fit);
 document.addEventListener('keydown',ev=>{const t=ev.target;if(t&&t.classList&&t.classList.contains('cellin')){if(ev.key==='Enter'){ev.preventDefault();cellCommit(t,true)}else if(ev.key==='Escape'){ev.stopPropagation();cellCommit(t,false)}}},true);
@@ -1912,9 +1970,9 @@ document.addEventListener('click',ev=>{document.querySelectorAll('details.more[o
 
 /* ---------- boot ---------- */
 const th=store.get('uti.theme');if(th==='dark'||th==='light')document.documentElement.dataset.theme=th;
-function onUser(email,verified){S.tkLanded=false;S.tkP={};S.ask=null;H={key:'',busy:false,ok:false,files:{},docs:[],reps:[],notes:{}};S.wr=null;S.as=null;S.realUser=null;S.reqs=[];S.sups={};S.pos=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
+function onUser(email,verified){if(S._lw){try{S._lw()}catch(e){}S._lw=null}S.myLreq=null;S.lreq=[];S.sMatch=null;S.tkLanded=false;S.tkP={};S.ask=null;H={key:'',busy:false,ok:false,files:{},docs:[],reps:[],notes:{}};S.wr=null;S.as=null;S.realUser=null;S.reqs=[];S.sups={};S.pos=[];S.emps={};S.sal={};S.ready=false;S.err=null;S.modal=null;R={hr:'',fin:'',ceo:''};CO=Object.assign({},CO_DEF);
  if(!email){S.user=null;S.auth='out';render();return false}
- S.user=email.toLowerCase();if(!S.user.endsWith('@'+DOMAIN)||!verified){S.auth='denied';render();return false}
+ S.user=email.toLowerCase();if(!isStaffKey(S.user)&&(!S.user.endsWith('@'+DOMAIN)||!verified)){S.auth='denied';render();return false}
  S.auth='in';S.loginErr=null;render();setTimeout(()=>presPing(true),5000);return true}
 const pslug=v=>String(v).toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';
 function fbBE(){
@@ -1922,12 +1980,13 @@ function fbBE(){
  const E=db.collection('employees'),RQ=db.collection('requests'),SAL=db.collection('salaries'),CF=db.collection('config');
  const stop=()=>{unsubs.forEach(u=>{try{u()}catch(e){}});unsubs=[];started=false};
  const fail=e=>{console.error(e);if(!S.ready){S.err=(e&&e.code)||'error';render()}else toast(L('تعذّر تحميل بعض البيانات. حدّث الصفحة.','Some data could not load. Reload the page.'))};
- function watchData(){const u=S.user,src=[new Map(),new Map(),new Map()];
+ function watchData(){const u=S.user,src=[new Map(),new Map(),new Map(),new Map()];
   const merge=()=>{const m=new Map();src.forEach(s=>s.forEach((v,k)=>m.set(k,v)));S.reqs=[...m.values()];refresh()};
   const sub=(q,i)=>unsubs.push(q.onSnapshot(s=>{const mp=new Map();s.forEach(d=>mp.set(d.id,Object.assign({},d.data(),{id:d.id})));src[i]=mp;merge()},fail));
-  if(isBoss(u))sub(RQ,0);else{sub(RQ.where('emp','==',u),0);sub(RQ.where('empMgr','==',u),1);sub(RQ.where('approvers','array-contains',u),2)}
+  if(isBoss(u))sub(RQ,0);else{sub(RQ.where('emp','==',u),0);{const al=((S.emps[u]||{}).aliases||[]).slice(0,10);if(al.length)sub(RQ.where('emp','in',al),3)}sub(RQ.where('empMgr','==',u),1);sub(RQ.where('approvers','array-contains',u),2)}
   if(canSeeSal())unsubs.push(SAL.onSnapshot(s=>{const m={};s.forEach(d=>{m[d.id]=d.data().sal});S.sal=m;refresh()},fail));
   else if(S.emps[u])unsubs.push(SAL.doc(u).onSnapshot(d=>{S.sal=d.exists?{[u]:d.data().sal}:{};refresh()},fail));
+  if(canManage())unsubs.push(db.collection('loginreq').where('status','==','pending').onSnapshot(q=>{S.lreq=q.docs.map(d=>Object.assign(d.data(),{id:d.id}));refresh()},e=>console.warn(e)));
   if(canPurch()){unsubs.push(db.collection('suppliers').onSnapshot(q=>{const m={};q.forEach(d=>{m[d.id]=Object.assign({},d.data(),{id:d.id})});S.sups=m;refresh()},fail));unsubs.push(db.collection('porders').onSnapshot(q=>{const a=[];q.forEach(d=>a.push(Object.assign({},d.data(),{id:d.id})));S.pos=a;refresh()},fail))}}
  function watch(){let gotE=false,gotR=false;
   const go=()=>{if(!gotE||!gotR)return;S.ready=true;const b=asReal(()=>isBoss(S.user)+'|'+canSeeSal()+'|'+canPurch());if(!started){started=true;wasBoss=b;if(S.emps[S.user]||isAdmin())watchData()}else if(b!==wasBoss){location.reload();return}refresh()};
@@ -1956,6 +2015,18 @@ function fbBE(){
   async tkDel(id,n){for(let i=0;i<(n||0);i++)await TK.doc(id).collection('parts').doc(String(i)).delete();await TK.doc(id).delete()},
   repDel(id){return HC('wreports').doc(id).delete()},reqDel(id){return RQ.doc(id).delete()},
   async empDel(k){for(const c of ['salaries','hrfiles','hrnotes']){try{await db.collection(c).doc(k).delete()}catch(e){}}await E.doc(k).delete()},
+  async staffSignIn(h,pw){const d=await db.collection('staffidx').doc(h).get();if(!d.exists)throw {code:'auth/invalid-credential'};return auth.signInWithEmailAndPassword(staffEmail(h,d.data().v),pw)},
+  async staffRegister(h,pw,name,last4){let v=0;try{const d=await db.collection('staffidx').doc(h).get();if(d.exists)v=d.data().v+1}catch(e){}
+   let cred=null;for(let i=0;i<30;i++,v++){try{cred=await auth.createUserWithEmailAndPassword(staffEmail(h,v),pw);break}catch(e){if(!(e&&e.code==='auth/email-already-in-use'))throw e}}
+   if(!cred)throw {code:'too-many'};
+   await db.collection('loginreq').doc(cred.user.uid).set({email:staffEmail(h,v),h,v,last4,name,at:firebase.firestore.FieldValue.serverTimestamp(),status:'pending'})},
+  staffMine(cb){const u=auth.currentUser;if(!u)return ()=>{};return db.collection('loginreq').doc(u.uid).onSnapshot(d=>cb(d.exists?d.data():null),()=>cb(null))},
+  async staffIdMap(){const q=await db.collection('hrfiles').get(),mp={};for(const d of q.docs){const f=d.data(),id=String(f.idNo||'').replace(/\D/g,'');if(id.length===10)mp[await staffHash(id)]={key:d.id,mobile:f.mobile||''}}Object.values(S.emps).forEach(e=>{if(e.staffH&&!mp[e.staffH])mp[e.staffH]={key:e.key,mobile:''}});return mp},
+  async staffDecide(q,key,ok){const R2=db.collection('loginreq').doc(q.id),ts=firebase.firestore.FieldValue.serverTimestamp();
+   if(!ok){await R2.update({status:'rejected',by:S.user,decidedAt:ts});return}
+   const old=S.emps[key]||{},al=(old.aliases||[]).slice();if(isStaffKey(key))al.push(key);
+   await BE.empMove(key,q.email);await E.doc(q.email).set({aliases:al,staffH:q.h},{merge:true});
+   await db.collection('staffidx').doc(q.h).set({v:q.v});await R2.update({status:'approved',by:S.user,decidedAt:ts,key})},
   async empMove(a,b){const cp=async c=>{const d=await db.collection(c).doc(a).get();if(d.exists)await db.collection(c).doc(b).set(d.data(),{merge:true})};
    for(const c of ['employees','salaries','hrfiles','hrnotes'])await cp(c);
    for(const c of ['hrdocs','tasks']){const q=await db.collection(c).where('emp','==',a).get();for(const d of q.docs)await d.ref.update({emp:b})}
@@ -1992,7 +2063,7 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
   if(!S.emps[u]&&!isAdmin()){S.err='permission-denied';render();return}
   S.sal=canSeeSal()?cl(M.sal):(M.sal[u]!=null?{[u]:M.sal[u]}:{});
   if(canPurch()){S.sups={};Object.keys(M.sups||{}).forEach(k=>{S.sups[k]=Object.assign(cl(M.sups[k]),{id:k})});S.pos=cl(M.pos||[])}else{S.sups={};S.pos=[]}
-  S.reqs=cl(M.reqs).filter(r=>isBoss(u)||r.emp===u||r.empMgr===u||r.approvers.includes(u));S.ready=true;refresh()}
+  S.reqs=cl(M.reqs).filter(r=>isBoss(u)||r.emp===u||((S.emps[u]||{}).aliases||[]).includes(r.emp)||r.empMgr===u||r.approvers.includes(u));S.lreq=canManage()?Object.entries(M.lreq||{}).map(([id,v])=>Object.assign({},v,{id})).filter(x=>x.status==='pending'):[];S.ready=true;refresh()}
  const login=e=>{if(e)store.set(UK,e);else store.del(UK);if(onUser(e,true))sync()};
  const MH=()=>M.hr||(M.hr={files:{},docs:{},parts:{},reps:{},notes:{}}),deny=()=>{throw {code:'permission-denied'}};
  const MT=()=>MH().tk||(MH().tk={}),own=()=>!!CFG.owner&&S.user===CFG.owner.toLowerCase();
@@ -2018,6 +2089,14 @@ function mockBE(){const K='uti.mock.v1',UK='uti.mock.user';let M=null;try{M=JSON
   async repDel(id){if(!own())deny();delete MH().reps[id];persist()},
   async reqDel(id){if(!own())deny();M.reqs=M.reqs.filter(r=>r.id!==id);persist();sync()},
   async empDel(k){if(!own())deny();delete M.emps[k];persist();sync()},
+  async staffSignIn(h,pw){const v=(M.sidx||{})[h];if(v==null)throw {code:'auth/invalid-credential'};const em=staffEmail(h,v);if((M.spw||{})[em]!==pw)throw {code:'auth/invalid-credential'};login(em)},
+  async staffRegister(h,pw,name,last4){M.spw=M.spw||{};let v=(M.sidx||{})[h];v=v==null?0:v+1;while(M.spw[staffEmail(h,v)])v++;const em=staffEmail(h,v),id='u'+now().toString(36)+Math.random().toString(36).slice(2,6);M.spw[em]=pw;(M.lreq||(M.lreq={}))[id]={email:em,h,v,last4,name,at:now(),status:'pending'};persist();login(em)},
+  staffMine(cb){const f=()=>{const q=Object.values(M.lreq||{}).find(x=>x.email===S.user);cb(q?cl(q):null)};setTimeout(f,0);const t=setInterval(f,800);return ()=>clearInterval(t)},
+  async staffIdMap(){const h=MH(),mp={};for(const [k,f] of Object.entries(h.files)){const id=String(f.idNo||'').replace(/\D/g,'');if(id.length===10)mp[await staffHash(id)]={key:k,mobile:f.mobile||''}}Object.values(M.emps).forEach(e=>{if(e.staffH&&!mp[e.staffH])mp[e.staffH]={key:e.key,mobile:''}});return mp},
+  async staffDecide(q,key,ok){if(!canManage())deny();const r=M.lreq[q.id];if(!ok){Object.assign(r,{status:'rejected',by:S.user});persist();sync();return}
+   const h=MH(),t=MT(),a=key,b=q.email,old=M.emps[a]||{},al=(old.aliases||[]).slice();if(isStaffKey(a))al.push(a);
+   M.emps[b]=Object.assign({},old,{key:b,aliases:al,staffH:q.h});delete M.emps[a];if(M.sal[a]!=null){M.sal[b]=M.sal[a];delete M.sal[a]}if(h.files[a]){h.files[b]=h.files[a];delete h.files[a]}if(h.notes[a]){h.notes[b]=h.notes[a];delete h.notes[a]}Object.values(h.docs).forEach(d=>{if(d.emp===a)d.emp=b});Object.values(t).forEach(x=>{if(x.emp===a)x.emp=b});
+   (M.sidx||(M.sidx={}))[q.h]=q.v;Object.assign(r,{status:'approved',by:S.user,key:a});persist();sync()},
   async empMove(a,b){if(!own())deny();const h=MH(),t=MT();M.emps[b]=Object.assign({},M.emps[a],M.emps[b]);delete M.emps[a];if(M.sal[a]!=null){M.sal[b]=M.sal[a];delete M.sal[a]}if(h.files[a]){h.files[b]=h.files[a];delete h.files[a]}if(h.notes[a]){h.notes[b]=h.notes[a];delete h.notes[a]}Object.values(h.docs).forEach(d=>{if(d.emp===a)d.emp=b});Object.values(t).forEach(x=>{if(x.emp===a)x.emp=b});persist();sync()},
   async hrLoad(u,all){const h=MH(),o={files:{},docs:[],reps:[],notes:{},tasks:(M.wrtasks||{}).text||''};all=all&&canManage();Object.keys(h.files).forEach(k=>{if(all||k===u)o.files[k]=cl(h.files[k])});o.docs=Object.keys(h.docs).map(id=>Object.assign(cl(h.docs[id]),{id})).filter(d=>all||d.emp===u);o.reps=Object.keys(h.reps).map(id=>Object.assign(cl(h.reps[id]),{id})).filter(d=>all||d.emp===u);if(all)o.notes=cl(h.notes);return o},
   async hrSaveFile(k,data){if(!canManage())deny();const h=MH();h.files[k]=Object.assign({},h.files[k],data);persist()},
